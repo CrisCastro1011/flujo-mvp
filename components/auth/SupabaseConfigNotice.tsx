@@ -37,7 +37,7 @@ export default function SupabaseConfigNotice() {
             <p className="text-xs font-medium text-gray-600 mb-2">Contenido de .env.local:</p>
             <code className="text-xs text-gray-800 block">
               NEXT_PUBLIC_SUPABASE_URL=tu-url-aquí<br/>
-              NEXT_PUBLIC_SUPABASE_ANON_KEY=tu-clave-aquí
+              NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=tu-clave-aquí
             </code>
           </div>
 

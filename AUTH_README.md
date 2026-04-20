@@ -28,7 +28,7 @@ Actualiza el archivo `.env.local` con tus credenciales reales:
 
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=tu-url-de-supabase
-NEXT_PUBLIC_SUPABASE_ANON_KEY=tu-clave-anonima-de-supabase
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=tu-clave-publishable-de-supabase
 ```
 
 ### 3. Configurar autenticación en Supabase

@@ -35,7 +35,7 @@ En Netlify Dashboard > Site Settings > Environment Variables, agrega:
 
 ```
 NEXT_PUBLIC_SUPABASE_URL=https://omktnuyjxffilyoscnyn.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=tu_clave_anon_de_supabase
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_wx15ggQ8cIGSXfk-7AdCwQ_XLWBgJMS
 ```
 
 ### Paso 4: Desplegar

@@ -1,7 +1,7 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
 // Verificar si las variables están configuradas correctamente
 export const hasValidConfig = Boolean(
@@ -22,7 +22,7 @@ if (hasValidConfig && supabaseUrl && supabaseAnonKey) {
     supabaseInstance = null;
   }
 } else {
-  console.warn('⚠️  Supabase no está configurado. Configura NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_ANON_KEY en .env.local');
+  console.warn('⚠️  Supabase no está configurado. Configura NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY en .env.local');
 }
 
 // Mock client para desarrollo sin configuración
