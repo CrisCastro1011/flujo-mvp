@@ -3,6 +3,13 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
+// Debug en producción
+console.log('🔧 SUPABASE DEBUG:');
+console.log('URL:', supabaseUrl ? 'SET' : 'NOT SET');
+console.log('KEY:', supabaseAnonKey ? 'SET' : 'NOT SET');
+console.log('URL Value:', supabaseUrl);
+console.log('KEY Value:', supabaseAnonKey ? 'sb_publishable_...' : 'undefined');
+
 // Verificar si las variables están configuradas correctamente
 export const hasValidConfig = Boolean(
   supabaseUrl && 
@@ -10,6 +17,8 @@ export const hasValidConfig = Boolean(
   supabaseUrl.startsWith('https://') &&
   supabaseUrl.includes('.supabase.co')
 );
+
+console.log('✅ hasValidConfig:', hasValidConfig);
 
 let supabaseInstance: SupabaseClient | null = null;
 

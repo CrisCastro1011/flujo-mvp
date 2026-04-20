@@ -1,0 +1,19 @@
+VARIABLES DE ENTORNO PARA NETLIFY - COPIAR Y PEGAR
+==================================================
+
+VARIABLE 1:
+Key: NEXT_PUBLIC_SUPABASE_URL
+Value: https://omktnuyjxffilyoscnyn.supabase.co
+
+VARIABLE 2:
+Key: NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+Value: sb_publishable_wx15ggQ8cIGSXfk-7AdCwQ_XLWBgJMS
+
+INSTRUCCIONES:
+1. Ve a Netlify Dashboard > Site Settings > Environment Variables
+2. Haz click en "Add a variable" 
+3. Copia el "Key" de la VARIABLE 1 y pégalo en el primer campo
+4. Copia el "Value" de la VARIABLE 1 y pégalo en el segundo campo
+5. Guarda la variable
+6. Repite para la VARIABLE 2
+7. Netlify hará redeploy automáticamente
