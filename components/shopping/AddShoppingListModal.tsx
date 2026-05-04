@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import dynamic from 'next/dynamic';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -12,8 +13,17 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { useFinance } from '@/context/FinanceContext';
+
+// Importar íconos dinámicamente
+const ShoppingBagIcon = dynamic(
+  () => import('lucide-react').then((mod) => ({ default: mod.ShoppingBag })),
+  { ssr: false }
+);
+const LoaderIcon = dynamic(
+  () => import('lucide-react').then((mod) => ({ default: mod.Loader })),
+  { ssr: false }
+);
 
 interface AddShoppingListModalProps {
   open: boolean;

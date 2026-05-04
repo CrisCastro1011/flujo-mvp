@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { MoreHorizontal, Edit, Trash2, Eye, CheckCircle, Circle, ExternalLink } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, Eye, CheckCircle, Circle, ExternalLink, Plus } from 'lucide-react';
 import { ShoppingList, ShoppingListItem } from '@/lib/types';
 import {
   DropdownMenu,
@@ -23,7 +23,6 @@ import {
 import { useFinance } from '@/context/FinanceContext';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
-import { Plus } from 'lucide-react';
 
 interface ShoppingListCardProps {
   shoppingList: ShoppingList;
