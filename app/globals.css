@@ -41,6 +41,81 @@
     font-feature-settings: "rlig" 1, "calt" 1;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    /* Prevenir zoom en iOS */
+    -webkit-text-size-adjust: 100%;
+    -moz-text-size-adjust: 100%;
+    -ms-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    /* Evitar scroll horizontal accidental */
+    overflow-x: hidden;
+  }
+  
+  /* Prevenir zoom automático en inputs de iOS */
+  input[type="text"],
+  input[type="email"], 
+  input[type="password"],
+  input[type="number"],
+  input[type="date"],
+  select,
+  textarea {
+    font-size: 16px !important;
+    /* Asegurar que el font-size no sea menor a 16px en móvil */
+  }
+  
+  /* Responsive font size para pantallas más grandes */
+  @media (min-width: 640px) {
+    input[type="text"],
+    input[type="email"], 
+    input[type="password"],
+    input[type="number"],
+    input[type="date"],
+    select,
+    textarea {
+      font-size: 14px !important;
+    }
+  }
+  
+  /* Mejoras específicas para iOS Safari */
+  @supports (-webkit-touch-callout: none) {
+    body {
+      /* Evitar rebote/bounce en iOS */
+      -webkit-overflow-scrolling: touch;
+      position: fixed;
+      overflow: hidden;
+      width: 100%;
+      height: 100%;
+    }
+    
+    #__next {
+      overflow-y: auto;
+      overflow-x: hidden;
+      height: 100vh;
+      width: 100vw;
+      -webkit-overflow-scrolling: touch;
+    }
+    
+    /* Evitar zoom cuando aparece el teclado virtual */
+    input:focus,
+    select:focus,
+    textarea:focus {
+      -webkit-transform: translateZ(0);
+      transform: translateZ(0);
+    }
+  }
+  
+  /* Corrección adicional para modales en móvil */
+  @media (max-width: 640px) {
+    .modal-mobile-fix {
+      position: fixed !important;
+      top: auto !important;
+      bottom: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      border-radius: 1.5rem 1.5rem 0 0 !important;
+      max-height: 90vh !important;
+      overflow-y: auto !important;
+      -webkit-overflow-scrolling: touch !important;
+    }
   }
 }
 
@@ -51,5 +126,22 @@
   }
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
+  }
+  
+  /* Clase específica para evitar zoom en inputs iOS */
+  .ios-input-fix {
+    font-size: 16px !important;
+    /* Evitar transformaciones que causen zoom */
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    /* Asegurar que el teclado virtual no afecte el viewport */
+    -webkit-user-select: text;
+  }
+  
+  /* Responsive: usar texto más pequeño en pantallas grandes */
+  @media (min-width: 640px) {
+    .ios-input-fix {
+      font-size: 14px !important;
+    }
   }
 }

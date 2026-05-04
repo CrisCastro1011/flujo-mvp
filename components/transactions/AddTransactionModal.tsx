@@ -51,16 +51,20 @@ export default function AddTransactionModal({ isOpen, onClose, defaultType = 'ex
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl p-6 z-10">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-lg font-bold text-slate-900">Agregar Transacción</h2>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition-colors"
-          >
-            <X size={16} className="text-slate-600" />
-          </button>
+      <div className="relative w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl z-10 max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 bg-white rounded-t-3xl sm:rounded-t-2xl px-6 py-4 border-b border-slate-100">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-bold text-slate-900">Agregar Transacción</h2>
+            <button
+              onClick={onClose}
+              className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition-colors"
+            >
+              <X size={16} className="text-slate-600" />
+            </button>
+          </div>
         </div>
+
+        <div className="px-6 py-4">
 
         <div className="flex rounded-xl bg-slate-100 p-1 mb-5">
           <button
@@ -102,7 +106,7 @@ export default function AddTransactionModal({ isOpen, onClose, defaultType = 'ex
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 required
-                className="w-full pl-9 pr-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                className="w-full pl-9 pr-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 text-base sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ios-input-fix"
               />
             </div>
           </div>
@@ -115,7 +119,7 @@ export default function AddTransactionModal({ isOpen, onClose, defaultType = 'ex
               value={category}
               onChange={(e) => setCategory(e.target.value)}
               required
-              className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all appearance-none"
+              className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 text-base sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all appearance-none ios-input-fix"
             >
               <option value="">Selecciona una categoría</option>
               {categories.map((cat) => (
@@ -134,7 +138,7 @@ export default function AddTransactionModal({ isOpen, onClose, defaultType = 'ex
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               required
-              className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 text-base sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ios-input-fix"
             />
           </div>
 
@@ -147,7 +151,7 @@ export default function AddTransactionModal({ isOpen, onClose, defaultType = 'ex
               value={date}
               onChange={(e) => setDate(e.target.value)}
               required
-              className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 text-base sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ios-input-fix"
             />
           </div>
 
@@ -162,6 +166,7 @@ export default function AddTransactionModal({ isOpen, onClose, defaultType = 'ex
             Guardar Transacción
           </button>
         </form>
+        </div>
       </div>
     </div>
   );
