@@ -4,6 +4,7 @@ import { ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
 import Sidebar from './Sidebar';
 import MobileNav from './MobileNav';
+import BudgetNotification from '@/components/ui/BudgetNotification';
 import { FinanceProvider } from '@/context/FinanceContext';
 import { CategoriesProvider } from '@/context/CategoriesContext';
 import { AuthProvider } from '@/context/AuthContext';
@@ -32,6 +33,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                   {children}
                 </main>
                 <MobileNav />
+                <BudgetNotification />
               </div>
             </FinanceProvider>
           </CategoriesProvider>

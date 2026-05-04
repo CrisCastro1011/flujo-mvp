@@ -1,8 +1,8 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Transaction, Budget, SavingsGoal } from '@/lib/types';
-import { mockTransactions, mockBudgets, mockSavingsGoals } from '@/lib/mockData';
+import { Transaction, Budget, SavingsGoal, ShoppingList } from '@/lib/types';
+import { mockTransactions, mockBudgets, mockSavingsGoals, mockShoppingLists, categoryMapping } from '@/lib/mockData';
 import { useAuth } from './AuthContext';
 import { hasValidConfig } from '@/lib/supabase';
 import {
@@ -15,13 +15,19 @@ import {
   deleteTransactionFromDB,
   deleteBudgetFromDB,
   deleteSavingsGoalFromDB,
-  updateSavingsGoalInDB
+  updateSavingsGoalInDB,
+  getUserShoppingLists,
+  saveShoppingList,
+  updateShoppingListInDB,
+  deleteShoppingListFromDB,
+  saveShoppingListItems
 } from '@/lib/supabaseFinance';
 
 interface FinanceContextType {
   transactions: Transaction[];
   budgets: Budget[];
   savingsGoals: SavingsGoal[];
+  shoppingLists: ShoppingList[];
   loading: boolean;
   addTransaction: (transaction: Omit<Transaction, 'id' | 'userId'>) => Promise<void>;
   addBudget: (budget: Omit<Budget, 'id' | 'userId'>) => Promise<void>;
@@ -30,6 +36,10 @@ interface FinanceContextType {
   deleteBudget: (id: string) => Promise<void>;
   deleteSavingsGoal: (id: string) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
+  addShoppingList: (shoppingList: Omit<ShoppingList, 'id' | 'userId'>) => Promise<void>;
+  updateShoppingList: (id: string, updates: Partial<Omit<ShoppingList, 'id' | 'userId'>>) => Promise<void>;
+  deleteShoppingList: (id: string) => Promise<void>;
+  budgetNotification: string | null;
 }
 
 const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
@@ -39,7 +49,9 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>([]);
+  const [shoppingLists, setShoppingLists] = useState<ShoppingList[]>([]);
   const [loading, setLoading] = useState(true);
+  const [budgetNotification, setBudgetNotification] = useState<string | null>(null);
 
   // Cargar datos cuando el usuario cambia
   useEffect(() => {
@@ -48,6 +60,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       setTransactions([]);
       setBudgets([]);
       setSavingsGoals([]);
+      setShoppingLists([]);
       setLoading(false);
       return;
     }
@@ -62,34 +75,40 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
           const demoTransactions = mockTransactions.map(t => ({ ...t, userId: user.id }));
           const demoBudgets = mockBudgets.map(b => ({ ...b, userId: user.id }));
           const demoSavingsGoals = mockSavingsGoals.map(g => ({ ...g, userId: user.id }));
+          const demoShoppingLists = mockShoppingLists.map(s => ({ ...s, userId: user.id }));
           
           setTransactions(demoTransactions);
           setBudgets(demoBudgets);
           setSavingsGoals(demoSavingsGoals);
+          setShoppingLists(demoShoppingLists);
         } else {
           // Usuario nuevo en modo demo: empezar con datos vacíos
           setTransactions([]);
           setBudgets([]);
           setSavingsGoals([]);
+          setShoppingLists([]);
         }
       } else {
         // Modo producción: cargar datos de Supabase
         try {
-          const [userTransactions, userBudgets, userSavingsGoals] = await Promise.all([
+          const [userTransactions, userBudgets, userSavingsGoals, userShoppingLists] = await Promise.all([
             getUserTransactions(user.id),
             getUserBudgets(user.id),
-            getUserSavingsGoals(user.id)
+            getUserSavingsGoals(user.id),
+            getUserShoppingLists(user.id)
           ]);
           
           setTransactions(userTransactions);
           setBudgets(userBudgets);
           setSavingsGoals(userSavingsGoals);
+          setShoppingLists(userShoppingLists);
         } catch (error) {
           console.error('Error loading user data:', error);
           // En caso de error, inicializar con datos vacíos para nuevos usuarios
           setTransactions([]);
           setBudgets([]);
           setSavingsGoals([]);
+          setShoppingLists([]);
         }
       }
       
@@ -98,6 +117,70 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
 
     loadUserData();
   }, [user]);
+
+  // Función auxiliar para actualizar presupuesto cuando se agrega/elimina una transacción
+  const updateBudgetFromTransaction = (transaction: Transaction, isAdd: boolean = true) => {
+    if (transaction.type !== 'expense') return;
+
+    let budgetUpdated = false;
+    let categoryUpdated = '';
+
+    setBudgets(prev => {
+      return prev.map(budget => {
+        if (!budget.isActive) return budget;
+
+        // Buscar categoría que coincida con la categoría de la transacción
+        const updatedCategories = budget.categories.map(category => {
+          // Usar el mapeo de categorías para encontrar coincidencias
+          const categoryMatches = Object.entries(categoryMapping).some(([budgetCategory, transactionCategories]) => {
+            return category.name === budgetCategory && 
+                   transactionCategories.includes(transaction.category);
+          }) || category.name.toLowerCase() === transaction.category.toLowerCase();
+
+          if (categoryMatches) {
+            budgetUpdated = true;
+            categoryUpdated = category.name;
+            return {
+              ...category,
+              used: Math.max(0, category.used + (isAdd ? transaction.amount : -transaction.amount))
+            };
+          }
+          return category;
+        });
+
+        // Recalcular totales del presupuesto
+        const totalSpent = updatedCategories.reduce((sum, cat) => sum + cat.used, 0);
+        const remainingBalance = budget.maxIncome - totalSpent;
+        
+        // Determinar nuevo estado
+        let newStatus: 'on-track' | 'warning' | 'exceeded' = 'on-track';
+        if (totalSpent > budget.maxSpendingLimit) {
+          newStatus = 'exceeded';
+        } else if (totalSpent > budget.maxSpendingLimit * 0.8) {
+          newStatus = 'warning';
+        }
+
+        return {
+          ...budget,
+          categories: updatedCategories,
+          totalSpent,
+          remainingBalance,
+          status: newStatus,
+          updatedAt: new Date().toISOString()
+        };
+      });
+    });
+
+    // Mostrar notificación si se actualizó el presupuesto
+    if (budgetUpdated) {
+      const action = isAdd ? 'descontado' : 'reintegrado';
+      setBudgetNotification(
+        `💰 $${transaction.amount.toLocaleString()} ${action} ${isAdd ? 'del' : 'al'} presupuesto de ${categoryUpdated}`
+      );
+      // Limpiar notificación después de 4 segundos
+      setTimeout(() => setBudgetNotification(null), 4000);
+    }
+  };
 
   const addTransaction = async (transaction: Omit<Transaction, 'id' | 'userId'>) => {
     if (!user) return;
@@ -112,6 +195,8 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       const savedTransaction = await saveTransaction(transactionWithUser);
       if (savedTransaction) {
         setTransactions(prev => [savedTransaction, ...prev]);
+        // Actualizar presupuesto si es un gasto
+        updateBudgetFromTransaction(savedTransaction, true);
       }
     } else {
       // Modo demo: solo actualizar estado local
@@ -120,17 +205,30 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         id: Date.now().toString(),
       };
       setTransactions(prev => [newTransaction, ...prev]);
+      // Actualizar presupuesto si es un gasto
+      updateBudgetFromTransaction(newTransaction, true);
     }
   };
 
   const deleteTransaction = async (id: string) => {
+    // Encontrar la transacción antes de eliminarla para actualizar el presupuesto
+    const transactionToDelete = transactions.find(t => t.id === id);
+    
     if (hasValidConfig) {
       const success = await deleteTransactionFromDB(id);
       if (success) {
         setTransactions(prev => prev.filter(t => t.id !== id));
+        // Restar del presupuesto si era un gasto
+        if (transactionToDelete) {
+          updateBudgetFromTransaction(transactionToDelete, false);
+        }
       }
     } else {
       setTransactions(prev => prev.filter(t => t.id !== id));
+      // Restar del presupuesto si era un gasto
+      if (transactionToDelete) {
+        updateBudgetFromTransaction(transactionToDelete, false);
+      }
     }
   };
 
@@ -220,11 +318,79 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Shopping Lists functions
+  const addShoppingList = async (shoppingList: Omit<ShoppingList, 'id' | 'userId'>) => {
+    if (!user) return;
+    
+    const shoppingListWithUser = {
+      ...shoppingList,
+      userId: user.id
+    };
+
+    if (hasValidConfig) {
+      // Modo producción: guardar en Supabase
+      const savedShoppingList = await saveShoppingList(shoppingListWithUser);
+      if (savedShoppingList) {
+        setShoppingLists(prev => [...prev, savedShoppingList]);
+      }
+    } else {
+      // Modo demo: solo actualizar estado local
+      const newShoppingList: ShoppingList = {
+        ...shoppingListWithUser,
+        id: Date.now().toString(),
+      };
+      setShoppingLists(prev => [...prev, newShoppingList]);
+    }
+  };
+
+  const updateShoppingList = async (id: string, updates: Partial<Omit<ShoppingList, 'id' | 'userId'>>) => {
+    if (hasValidConfig) {
+      // Actualizar en Supabase
+      const dbUpdates: any = {};
+      if (updates.name !== undefined) dbUpdates.name = updates.name;
+      if (updates.description !== undefined) dbUpdates.description = updates.description;
+      if (updates.totalItems !== undefined) dbUpdates.totalItems = updates.totalItems;
+      if (updates.completedItems !== undefined) dbUpdates.completedItems = updates.completedItems;
+      if (updates.updatedAt !== undefined) dbUpdates.updatedAt = updates.updatedAt;
+
+      const success = await updateShoppingListInDB(id, dbUpdates);
+      
+      if (success && updates.items) {
+        // También actualizar los items si se proporcionaron
+        await saveShoppingListItems(id, updates.items);
+      }
+      
+      if (success) {
+        setShoppingLists(prev =>
+          prev.map(list => list.id === id ? { ...list, ...updates } : list)
+        );
+      }
+    } else {
+      // Modo demo: solo actualizar estado local
+      setShoppingLists(prev =>
+        prev.map(list => list.id === id ? { ...list, ...updates } : list)
+      );
+    }
+  };
+
+  const deleteShoppingList = async (id: string) => {
+    if (hasValidConfig) {
+      const success = await deleteShoppingListFromDB(id);
+      if (success) {
+        setShoppingLists(prev => prev.filter(list => list.id !== id));
+      }
+    } else {
+      // Modo demo: solo actualizar estado local
+      setShoppingLists(prev => prev.filter(list => list.id !== id));
+    }
+  };
+
   return (
     <FinanceContext.Provider value={{
       transactions,
       budgets,
       savingsGoals,
+      shoppingLists,
       loading,
       addTransaction,
       addBudget,
@@ -233,6 +399,10 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       deleteBudget,
       deleteSavingsGoal,
       deleteTransaction,
+      addShoppingList,
+      updateShoppingList,
+      deleteShoppingList,
+      budgetNotification,
     }}>
       {children}
     </FinanceContext.Provider>

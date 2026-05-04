@@ -1,11 +1,14 @@
 'use client';
 
 import { Budget } from '@/lib/types';
-import { Trash2, Chrome as Home, ShoppingCart, Utensils, Car, Tv, Heart, Wallet } from 'lucide-react';
+import { 
+  Trash2, Chrome as Home, ShoppingCart, Utensils, Car, Tv, Heart, Wallet, 
+  TrendingUp, Calendar, DollarSign, Target, Clock, AlertTriangle 
+} from 'lucide-react';
 import { useFinance } from '@/context/FinanceContext';
 
 const iconMap: Record<string, React.ElementType> = {
-  Home, ShoppingCart, Utensils, Car, Tv, Heart, Wallet,
+  Home, ShoppingCart, Utensils, Car, Tv, Heart, Wallet, TrendingUp, Calendar, DollarSign, Target
 };
 
 interface BudgetCardProps {
@@ -14,14 +17,38 @@ interface BudgetCardProps {
 
 export default function BudgetCard({ budget }: BudgetCardProps) {
   const { deleteBudget } = useFinance();
-  const percentage = Math.min(Math.round((budget.used / budget.limit) * 100), 100);
-  const isOverBudget = budget.used > budget.limit;
-  const remaining = budget.limit - budget.used;
+  
+  // Calcular totales
+  const totalSpent = budget.categories.reduce((sum, cat) => sum + cat.used, 0);
+  const totalAllocated = budget.categories.reduce((sum, cat) => sum + cat.limit, 0);
+  const percentage = Math.min(Math.round((totalSpent / budget.maxSpendingLimit) * 100), 100);
+  const isOverBudget = totalSpent > budget.maxSpendingLimit;
+  const remaining = budget.maxIncome - totalSpent;
 
+  // Determinar estado del presupuesto
+  const getStatusInfo = () => {
+    if (isOverBudget) {
+      return { text: 'Límite Superado', color: 'red', bgColor: 'bg-red-50', textColor: 'text-red-600' };
+    } else if (percentage > 80) {
+      return { text: 'Cerca del límite', color: 'yellow', bgColor: 'bg-yellow-50', textColor: 'text-yellow-600' };
+    } else {
+      return { text: 'Vas bien', color: 'green', bgColor: 'bg-green-50', textColor: 'text-green-600' };
+    }
+  };
+
+  const status = getStatusInfo();
   const Icon = iconMap[budget.icon] || Wallet;
 
+  // Calcular días restantes
+  const formatDaysUntilNext = (days: number) => {
+    if (days <= 0) return 'Vencido';
+    if (days === 1) return '1 día';
+    return `${days} días`;
+  };
+
   return (
-    <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 group">
+    <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 hover:shadow-lg transition-all duration-200 group">
+      {/* Header con información básica */}
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-3">
           <div
@@ -31,57 +58,109 @@ export default function BudgetCard({ budget }: BudgetCardProps) {
             <Icon size={18} style={{ color: budget.color }} />
           </div>
           <div>
-            <p className="text-sm font-semibold text-slate-800">{budget.category}</p>
-            <p className="text-xs text-slate-400">${budget.limit.toLocaleString()} limit</p>
+            <h3 className="text-sm font-semibold text-slate-800">{budget.name}</h3>
+            <p className="text-xs text-slate-400 capitalize">{budget.type}</p>
           </div>
         </div>
-        <button
-          onClick={async () => {
-            try {
-              await deleteBudget(budget.id);
-            } catch (error) {
-              console.error('Error deleting budget:', error);
-            }
-          }}
-          className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-red-50 transition-all"
-        >
-          <Trash2 size={14} className="text-red-400" />
-        </button>
+        
+        <div className="flex items-center gap-2">
+          {/* Badge de estado */}
+          <div className={`px-2 py-1 rounded-full text-xs font-medium ${status.bgColor} ${status.textColor}`}>
+            {status.text}
+          </div>
+          
+          {/* Botón eliminar */}
+          <button
+            onClick={async () => {
+              try {
+                await deleteBudget(budget.id);
+              } catch (error) {
+                console.error('Error deleting budget:', error);
+              }
+            }}
+            className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-red-50 transition-all"
+          >
+            <Trash2 size={14} className="text-red-400" />
+          </button>
+        </div>
       </div>
 
-      <div className="mb-2">
-        <div className="flex items-center justify-between mb-1.5">
-          <span className="text-xs text-slate-500 font-medium">Spent</span>
+      {/* Métricas principales */}
+      <div className="grid grid-cols-2 gap-3 mb-4">
+        <div className="text-center p-3 bg-slate-50 rounded-xl">
+          <div className="text-lg font-bold text-slate-900">
+            ${totalSpent.toLocaleString()}
+          </div>
+          <div className="text-xs text-slate-500">Gastado</div>
+        </div>
+        <div className="text-center p-3 bg-slate-50 rounded-xl">
+          <div className="text-lg font-bold text-slate-900">
+            ${remaining.toLocaleString()}
+          </div>
+          <div className="text-xs text-slate-500">Disponible</div>
+        </div>
+      </div>
+
+      {/* Barra de progreso principal */}
+      <div className="mb-3">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs text-slate-500 font-medium">Progreso del Presupuesto</span>
           <span className={`text-xs font-bold ${isOverBudget ? 'text-red-500' : 'text-slate-700'}`}>
-            ${budget.used.toLocaleString()} / ${budget.limit.toLocaleString()}
+            {percentage}%
           </span>
         </div>
         <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
           <div
             className="h-2 rounded-full transition-all duration-500"
             style={{
-              width: `${percentage}%`,
-              backgroundColor: isOverBudget ? '#EF4444' : budget.color,
+              width: `${Math.min(percentage, 100)}%`,
+              backgroundColor: isOverBudget ? '#EF4444' : percentage > 80 ? '#F59E0B' : budget.color,
             }}
           />
         </div>
+        <div className="flex justify-between mt-1 text-xs text-slate-400">
+          <span>${totalSpent.toLocaleString()} / ${budget.maxSpendingLimit.toLocaleString()}</span>
+        </div>
       </div>
 
-      <div className="flex items-center justify-between mt-3">
-        <span className={`text-xs font-medium px-2 py-1 rounded-full ${
-          isOverBudget
-            ? 'bg-red-50 text-red-600'
-            : percentage >= 80
-            ? 'bg-amber-50 text-amber-600'
-            : 'bg-emerald-50 text-emerald-600'
-        }`}>
-          {isOverBudget
-            ? `$${Math.abs(remaining).toLocaleString()} over budget`
-            : `$${remaining.toLocaleString()} remaining`
-          }
-        </span>
-        <span className="text-xs font-bold text-slate-500">{percentage}%</span>
+      {/* Información adicional */}
+      <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+        <div className="flex items-center gap-2">
+          <Clock size={12} className="text-slate-400" />
+          <span className="text-xs text-slate-500">
+            {formatDaysUntilNext(budget.daysUntilNext)} para próximo sueldo
+          </span>
+        </div>
+        
+        <div className="flex items-center gap-1">
+          {budget.isActive && (
+            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+          )}
+          <span className="text-xs text-slate-500">
+            {budget.categories.length} categorías
+          </span>
+        </div>
       </div>
+
+      {/* Mostrar advertencia si está cerca del límite */}
+      {percentage > 80 && !isOverBudget && (
+        <div className="mt-3 p-2 bg-yellow-50 rounded-lg border border-yellow-200 flex items-center gap-2">
+          <AlertTriangle size={14} className="text-yellow-600" />
+          <span className="text-xs text-yellow-700">
+            Cerca del límite de gasto
+          </span>
+        </div>
+      )}
+
+      {/* Mostrar advertencia si superó el límite */}
+      {isOverBudget && (
+        <div className="mt-3 p-2 bg-red-50 rounded-lg border border-red-200 flex items-center gap-2">
+          <AlertTriangle size={14} className="text-red-600" />
+          <span className="text-xs text-red-700">
+            Has superado tu límite de gasto por ${(totalSpent - budget.maxSpendingLimit).toLocaleString()}
+          </span>
+        </div>
+      )}
     </div>
   );
 }

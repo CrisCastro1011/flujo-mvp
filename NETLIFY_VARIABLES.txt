@@ -17,3 +17,5 @@ INSTRUCCIONES:
 5. Guarda la variable
 6. Repite para la VARIABLE 2
 7. Netlify hará redeploy automáticamente
+
+https://omktnuyjxffilyoscnyn.supabase.co

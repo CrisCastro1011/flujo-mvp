@@ -1,5 +1,5 @@
 import { supabase, hasValidConfig } from './supabase';
-import { Transaction, Budget, SavingsGoal, Category } from './types';
+import { Transaction, Budget, SavingsGoal, Category, ShoppingList, ShoppingListItem } from './types';
 
 export async function getUserTransactions(userId: string): Promise<Transaction[]> {
   if (!hasValidConfig) return [];
@@ -298,6 +298,212 @@ export async function updateSavingsGoalInDB(id: string, currentAmount: number): 
     return true;
   } catch (error) {
     console.error('Error updating savings goal:', error);
+    return false;
+  }
+}
+
+// ==================== SHOPPING LISTS FUNCTIONS ====================
+
+export async function getUserShoppingLists(userId: string): Promise<ShoppingList[]> {
+  if (!hasValidConfig) return [];
+  
+  try {
+    const { data: listsData, error: listsError } = await supabase
+      .from('shopping_lists')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    
+    if (listsError) {
+      console.error('Error fetching shopping lists:', listsError);
+      return [];
+    }
+
+    if (!listsData || listsData.length === 0) {
+      return [];
+    }
+
+    // Obtener los items para cada lista
+    const listIds = listsData.map(list => list.id);
+    const { data: itemsData, error: itemsError } = await supabase
+      .from('shopping_list_items')
+      .select('*')
+      .in('shopping_list_id', listIds)
+      .order('created_at', { ascending: true });
+    
+    if (itemsError) {
+      console.error('Error fetching shopping list items:', itemsError);
+      return [];
+    }
+
+    // Agrupar items por lista
+    const itemsByListId = (itemsData || []).reduce((acc, item) => {
+      if (!acc[item.shopping_list_id]) {
+        acc[item.shopping_list_id] = [];
+      }
+      acc[item.shopping_list_id].push({
+        id: item.id,
+        name: item.name,
+        price: item.price ? parseFloat(item.price) : undefined,
+        link: item.link,
+        completed: item.completed,
+        completedAt: item.completed_at
+      });
+      return acc;
+    }, {} as Record<string, ShoppingListItem[]>);
+
+    // Convertir a formato de aplicación
+    return listsData.map(list => ({
+      id: list.id,
+      userId: list.user_id,
+      name: list.name,
+      description: list.description,
+      items: itemsByListId[list.id] || [],
+      createdAt: list.created_at,
+      updatedAt: list.updated_at,
+      totalItems: list.total_items,
+      completedItems: list.completed_items
+    }));
+  } catch (error) {
+    console.error('Error fetching shopping lists:', error);
+    return [];
+  }
+}
+
+export async function saveShoppingList(shoppingList: Omit<ShoppingList, 'id'>): Promise<ShoppingList | null> {
+  if (!hasValidConfig) return null;
+  
+  try {
+    const dbShoppingList = {
+      user_id: shoppingList.userId,
+      name: shoppingList.name,
+      description: shoppingList.description,
+      total_items: shoppingList.totalItems,
+      completed_items: shoppingList.completedItems,
+      created_at: shoppingList.createdAt,
+      updated_at: shoppingList.updatedAt
+    };
+    
+    const { data, error } = await supabase
+      .from('shopping_lists')
+      .insert([dbShoppingList])
+      .select()
+      .single();
+    
+    if (error) {
+      console.error('Error saving shopping list:', error);
+      return null;
+    }
+    
+    return {
+      id: data.id,
+      userId: data.user_id,
+      name: data.name,
+      description: data.description,
+      items: [],
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+      totalItems: data.total_items,
+      completedItems: data.completed_items
+    };
+  } catch (error) {
+    console.error('Error saving shopping list:', error);
+    return null;
+  }
+}
+
+export async function updateShoppingListInDB(id: string, updates: {
+  name?: string;
+  description?: string;
+  totalItems?: number;
+  completedItems?: number;
+  updatedAt?: string;
+}): Promise<boolean> {
+  if (!hasValidConfig) return false;
+  
+  try {
+    const dbUpdates: any = {};
+    if (updates.name !== undefined) dbUpdates.name = updates.name;
+    if (updates.description !== undefined) dbUpdates.description = updates.description;
+    if (updates.totalItems !== undefined) dbUpdates.total_items = updates.totalItems;
+    if (updates.completedItems !== undefined) dbUpdates.completed_items = updates.completedItems;
+    if (updates.updatedAt !== undefined) dbUpdates.updated_at = updates.updatedAt;
+
+    const { error } = await supabase
+      .from('shopping_lists')
+      .update(dbUpdates)
+      .eq('id', id);
+    
+    if (error) {
+      console.error('Error updating shopping list:', error);
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error updating shopping list:', error);
+    return false;
+  }
+}
+
+export async function deleteShoppingListFromDB(id: string): Promise<boolean> {
+  if (!hasValidConfig) return false;
+  
+  try {
+    // Los items se eliminan automáticamente por CASCADE
+    const { error } = await supabase
+      .from('shopping_lists')
+      .delete()
+      .eq('id', id);
+    
+    if (error) {
+      console.error('Error deleting shopping list:', error);
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error deleting shopping list:', error);
+    return false;
+  }
+}
+
+export async function saveShoppingListItems(listId: string, items: ShoppingListItem[]): Promise<boolean> {
+  if (!hasValidConfig) return false;
+  
+  try {
+    // Primero eliminamos todos los items existentes
+    await supabase
+      .from('shopping_list_items')
+      .delete()
+      .eq('shopping_list_id', listId);
+
+    if (items.length > 0) {
+      // Luego insertamos los nuevos items
+      const dbItems = items.map(item => ({
+        shopping_list_id: listId,
+        name: item.name,
+        price: item.price,
+        link: item.link,
+        completed: item.completed,
+        completed_at: item.completedAt,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }));
+
+      const { error } = await supabase
+        .from('shopping_list_items')
+        .insert(dbItems);
+      
+      if (error) {
+        console.error('Error saving shopping list items:', error);
+        return false;
+      }
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error saving shopping list items:', error);
     return false;
   }
 }

@@ -1,53 +1,246 @@
-# Despliegue en Netlify 🚀
+# 🚀 Guía de Despliegue - Finely
 
-Este proyecto está configurado para desplegarse fácilmente en Netlify.
+## 📋 Pre-Despliegue Checklist
 
-## 📋 Preparativos
+### ✅ **Verificaciones Técnicas**
+- [ ] `npm run build` ejecuta sin errores
+- [ ] `npm run type-check` pasa todas las verificaciones
+- [ ] Variables de entorno configuradas correctamente
+- [ ] Supabase SQL ejecutado y tablas creadas
+- [ ] Funcionalidad de Shopping Lists testada localmente
 
-### 1. Subir a GitHub
+### ✅ **Supabase Configuration** 
+- [ ] Proyecto Supabase creado
+- [ ] `supabase-setup.sql` ejecutado completamente
+- [ ] Tablas verificadas: `transactions`, `budgets`, `savings_goals`, `shopping_lists`, `shopping_list_items`
+- [ ] Row Level Security (RLS) activado en todas las tablas
+- [ ] Authentication configurado para tu dominio
+
+---
+
+## 🌐 Despliegue en Netlify (Recomendado)
+
+### **1. Preparación del Repositorio**
 ```bash
+# Asegurar que todo esté commiteado
 git add .
-git commit -m "Preparado para Netlify"
+git commit -m "feat: Shopping Lists integration complete"
 git push origin main
 ```
 
-### 2. Configurar Supabase para producción
-- Verifica que tu proyecto Supabase esté en modo producción
-- Confirma que las RLS (Row Level Security) estén activadas
-- Ejecuta el script SQL para crear las tablas y políticas
+### **2. Configurar Netlify**
 
-## 🌐 Despliegue en Netlify
+#### **2.1 Conectar Repositorio**
+1. Ve a [Netlify Dashboard](https://app.netlify.com)
+2. **New site from Git** 
+3. Conecta con GitHub/GitLab
+4. Selecciona tu repositorio
+5. **Deploy settings:**
+   ```
+   Build command: npm run build
+   Publish directory: .next
+   ```
 
-### Paso 1: Conectar repositorio
-1. Ve a [netlify.com](https://netlify.com) y regístrate
-2. Click en "New site from Git"
-3. Conecta tu repositorio de GitHub
-4. Selecciona este proyecto
+#### **2.2 Variables de Entorno**
+Usar las variables del archivo `NETLIFY_VARIABLES.txt`:
 
-### Paso 2: Configuración automática
-Netlify detectará automáticamente:
-- ✅ Framework: Next.js
-- ✅ Build command: `npm run build`
-- ✅ Plugin: `@netlify/plugin-nextjs`
+**Site Settings** > **Environment variables** > **Add a variable**
 
-### Paso 3: Variables de entorno
-En Netlify Dashboard > Site Settings > Environment Variables, agrega:
+```bash
+# Variable 1
+Key: NEXT_PUBLIC_SUPABASE_URL
+Value: https://omktnuyjxffilyoscnyn.supabase.co
 
+# Variable 2  
+Key: NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+Value: sb_publishable_wx15ggQ8cIGSXfk-7AdCwQ_XLWBgJMS
 ```
-NEXT_PUBLIC_SUPABASE_URL=https://omktnuyjxffilyoscnyn.supabase.co
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_wx15ggQ8cIGSXfk-7AdCwQ_XLWBgJMS
+
+#### **2.3 Deploy**
+1. **Deploy site** 
+2. Netlify detectará automáticamente Next.js
+3. El deploy tomará ~2-3 minutos
+4. ✅ **Site live!**
+
+### **3. Configurar Supabase para Producción**
+
+#### **3.1 Site URL Configuration**
+En **Supabase Dashboard** > **Authentication** > **URL Configuration**:
+
+```bash
+Site URL: https://tu-sitio.netlify.app
+Additional Redirect URLs: 
+  - https://tu-sitio.netlify.app/**
+  - https://tu-sitio.netlify.app/auth/callback
 ```
 
-### Paso 4: Desplegar
-- Click "Deploy site"
-- Netlify automáticamente construirá y desplegará tu aplicación
+#### **3.2 CORS Configuration** 
+En **Settings** > **API**:
+```bash
+Allowed origins: 
+  - https://tu-sitio.netlify.app
+  - http://localhost:3000 (para desarrollo)
+```
 
-## ⚙️ Configuración incluida
+---
 
-- **netlify.toml**: Configuración optimizada para Next.js
-- **Headers de seguridad**: X-Frame-Options, CSP, etc.
-- **Cache headers**: Optimización de assets estáticos
-- **Plugin de Next.js**: Soporte completo para SSR/SSG
+## ⚡ Despliegue en Vercel
+
+### **1. Vercel CLI Setup**
+```bash
+# Instalar Vercel CLI
+npm i -g vercel
+
+# Login
+vercel login
+
+# Deploy desde directorio del proyecto
+vercel --prod
+```
+
+### **2. Variables de Entorno en Vercel**
+```bash
+# Opción 1: CLI
+vercel env add NEXT_PUBLIC_SUPABASE_URL
+vercel env add NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+
+# Opción 2: Dashboard
+# Ve a Project Settings > Environment Variables
+```
+
+### **3. Deploy Automático**
+```bash
+# Conectar con Git para deploys automáticos
+vercel --prod
+# Seguir instrucciones para conectar repositorio
+```
+
+---
+
+## 🔧 Post-Deploy Configuration
+
+### **1. Verificar Funcionalidad**
+
+#### **Checklist de Testing en Producción:**
+- [ ] ✅ Login/Register funciona
+- [ ] ✅ Dashboard carga correctamente  
+- [ ] ✅ Transacciones se guardan en Supabase
+- [ ] ✅ Presupuestos persistentes
+- [ ] ✅ Metas de ahorro funcionan
+- [ ] ✅ **Shopping Lists**: Crear/editar/eliminar
+- [ ] ✅ **Shopping Items**: Agregar/completar/links externos
+- [ ] ✅ Logout limpia la sesión
+
+#### **Testing URLs:**
+```bash
+# Páginas principales
+https://tu-sitio.com/                # Dashboard
+https://tu-sitio.com/transactions   # Transacciones  
+https://tu-sitio.com/budgets        # Presupuestos
+https://tu-sitio.com/savings        # Ahorros
+https://tu-sitio.com/shopping       # Shopping Lists (NUEVO)
+
+# Autenticación
+https://tu-sitio.com/login          # Login
+https://tu-sitio.com/register       # Registro
+```
+
+---
+
+## 🔐 Security Checklist
+
+### **Variables de Entorno**
+- [ ] ✅ Nunca commitear `.env.local` 
+- [ ] ✅ Solo usar variables `NEXT_PUBLIC_*` para datos públicos
+- [ ] ✅ Verificar que Supabase Publishable Key sea la correcta
+- [ ] ✅ Configurar Site URL en Supabase correctamente
+
+### **Supabase Security**
+- [ ] ✅ RLS habilitado en todas las tablas
+- [ ] ✅ Políticas de seguridad configuradas
+- [ ] ✅ Solo usuarios autenticados pueden acceder a datos
+- [ ] ✅ CORS configurado solo para tu dominio
+
+### **General**
+- [ ] ✅ HTTPS habilitado (automático en Netlify/Vercel)
+- [ ] ✅ Headers de seguridad configurados
+- [ ] ✅ No hay console.logs con datos sensibles en producción
+
+---
+
+## 📊 Troubleshooting común
+
+### **❌ "Supabase connection failed"**
+```bash
+# Verificar variables de entorno
+echo $NEXT_PUBLIC_SUPABASE_URL
+echo $NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+
+# En production, verificar en deploy logs
+```
+
+### **❌ "RLS policy error"**
+```sql
+-- Verificar políticas en Supabase SQL Editor
+SELECT * FROM pg_policies WHERE tablename IN 
+  ('transactions', 'budgets', 'savings_goals', 'shopping_lists', 'shopping_list_items');
+```
+
+### **❌ "Shopping Lists not loading"** 
+```bash
+# Verificar que las tablas existen
+# Supabase Dashboard > Table Editor
+# Debe mostrar: shopping_lists, shopping_list_items
+
+# Verificar datos de ejemplo
+SELECT * FROM shopping_lists LIMIT 5;
+SELECT * FROM shopping_list_items LIMIT 5;
+```
+
+### **❌ "Build failing"**
+```bash
+# Limpiar cache local
+rm -rf .next node_modules package-lock.json
+npm install
+npm run build
+
+# Verificar TypeScript
+npm run type-check
+```
+
+---
+
+## ✅ **Deploy Success!**
+
+Si has seguido esta guía, tu aplicación **Finely** debería estar funcionando perfectamente en producción con:
+
+🎯 **Funcionalidades Core:**
+- ✅ Autenticación segura
+- ✅ Gestión financiera completa  
+- ✅ **Shopping Lists** con persistencia en Supabase
+- ✅ UI/UX optimizada y responsive
+
+🔐 **Seguridad:**
+- ✅ Row Level Security configurado
+- ✅ HTTPS habilitado
+- ✅ Variables de entorno seguras
+
+🚀 **Performance:**
+- ✅ Build optimizado
+- ✅ Server-side rendering
+- ✅ Image optimization
+
+---
+
+> **🎉 ¡Felicidades!** Tu aplicación de finanzas personales está live y lista para usuarios reales.
+
+**URLs útiles Post-Deploy:**
+- 📱 **App**: `https://tu-sitio.netlify.app`
+- 🗄️ **Database**: [Supabase Dashboard](https://supabase.com/dashboard)
+- 📊 **Analytics**: Netlify/Vercel Dashboard
+- 🔧 **Logs**: Platform-specific logging
+
+**Soporte:** Si encuentras issues, revisa los logs de deploy y asegúrate de que todas las tablas de Supabase estén creadas correctamente.
 
 ## 🔧 Comandos útiles
 

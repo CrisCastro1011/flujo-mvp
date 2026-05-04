@@ -49,6 +49,30 @@ CREATE TABLE IF NOT EXISTS public.categories (
   UNIQUE(user_id, name, type)
 );
 
+-- NUEVAS TABLAS: LISTAS DE COMPRAS
+CREATE TABLE IF NOT EXISTS public.shopping_lists (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  description TEXT,
+  total_items INTEGER DEFAULT 0,
+  completed_items INTEGER DEFAULT 0,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.shopping_list_items (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  shopping_list_id UUID NOT NULL REFERENCES public.shopping_lists(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  price DECIMAL,
+  link TEXT,
+  completed BOOLEAN DEFAULT FALSE,
+  completed_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
 -- 2. ACTIVAR ROW LEVEL SECURITY (RLS) - Solo si no está activado
 DO $$
 BEGIN
@@ -78,6 +102,8 @@ BEGIN
 END $$;
 
 ALTER TABLE public.categories ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.shopping_lists ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.shopping_list_items ENABLE ROW LEVEL SECURITY;
 
 -- 3. CREAR POLÍTICAS DE SEGURIDAD (Solo el usuario puede ver sus datos)
 -- Transacciones
@@ -147,6 +173,60 @@ CREATE POLICY "Users can update own categories" ON public.categories
 DROP POLICY IF EXISTS "Users can delete own categories" ON public.categories;
 CREATE POLICY "Users can delete own categories" ON public.categories
   FOR DELETE USING (auth.uid()::text = user_id);
+
+-- Shopping Lists
+DROP POLICY IF EXISTS "Users can view own shopping_lists" ON public.shopping_lists;
+CREATE POLICY "Users can view own shopping_lists" ON public.shopping_lists
+  FOR SELECT USING (auth.uid()::text = user_id);
+
+DROP POLICY IF EXISTS "Users can insert own shopping_lists" ON public.shopping_lists;
+CREATE POLICY "Users can insert own shopping_lists" ON public.shopping_lists
+  FOR INSERT WITH CHECK (auth.uid()::text = user_id);
+
+DROP POLICY IF EXISTS "Users can update own shopping_lists" ON public.shopping_lists;
+CREATE POLICY "Users can update own shopping_lists" ON public.shopping_lists
+  FOR UPDATE USING (auth.uid()::text = user_id);
+
+DROP POLICY IF EXISTS "Users can delete own shopping_lists" ON public.shopping_lists;
+CREATE POLICY "Users can delete own shopping_lists" ON public.shopping_lists
+  FOR DELETE USING (auth.uid()::text = user_id);
+
+-- Shopping List Items
+DROP POLICY IF EXISTS "Users can view own shopping_list_items" ON public.shopping_list_items;
+CREATE POLICY "Users can view own shopping_list_items" ON public.shopping_list_items
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM public.shopping_lists sl 
+      WHERE sl.id = shopping_list_id AND sl.user_id = auth.uid()::text
+    )
+  );
+
+DROP POLICY IF EXISTS "Users can insert own shopping_list_items" ON public.shopping_list_items;
+CREATE POLICY "Users can insert own shopping_list_items" ON public.shopping_list_items
+  FOR INSERT WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.shopping_lists sl 
+      WHERE sl.id = shopping_list_id AND sl.user_id = auth.uid()::text
+    )
+  );
+
+DROP POLICY IF EXISTS "Users can update own shopping_list_items" ON public.shopping_list_items;
+CREATE POLICY "Users can update own shopping_list_items" ON public.shopping_list_items
+  FOR UPDATE USING (
+    EXISTS (
+      SELECT 1 FROM public.shopping_lists sl 
+      WHERE sl.id = shopping_list_id AND sl.user_id = auth.uid()::text
+    )
+  );
+
+DROP POLICY IF EXISTS "Users can delete own shopping_list_items" ON public.shopping_list_items;
+CREATE POLICY "Users can delete own shopping_list_items" ON public.shopping_list_items
+  FOR DELETE USING (
+    EXISTS (
+      SELECT 1 FROM public.shopping_lists sl 
+      WHERE sl.id = shopping_list_id AND sl.user_id = auth.uid()::text
+    )
+  );
 
 -- 4. INSERTAR CATEGORÍAS POR DEFECTO (función para nuevos usuarios)
 CREATE OR REPLACE FUNCTION create_default_categories(user_uuid TEXT)

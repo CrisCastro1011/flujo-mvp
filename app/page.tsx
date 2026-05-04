@@ -8,6 +8,7 @@ import BalanceCard from '@/components/dashboard/BalanceCard';
 import SummaryCards from '@/components/dashboard/SummaryCards';
 import SpendingChart from '@/components/dashboard/SpendingChart';
 import RecentTransactions from '@/components/dashboard/RecentTransactions';
+import BudgetSummaryCard from '@/components/dashboard/BudgetSummaryCard';
 import AddTransactionModal from '@/components/transactions/AddTransactionModal';
 import { TransactionType } from '@/lib/types';
 
@@ -88,6 +89,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="lg:col-span-1 space-y-5">
+          <BudgetSummaryCard />
           <SpendingChart data={spendingData} />
         </div>
       </div>

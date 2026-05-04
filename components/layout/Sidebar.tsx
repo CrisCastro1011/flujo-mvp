@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, ArrowLeftRight, Target, PiggyBank, TrendingUp, Settings, LogOut, User } from 'lucide-react';
+import { LayoutDashboard, ArrowLeftRight, Target, PiggyBank, TrendingUp, Settings, LogOut, User, ShoppingCart } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -12,7 +12,7 @@ const navItems = [
   { href: '/transactions', label: 'Transacciones', icon: ArrowLeftRight },
   { href: '/budgets', label: 'Presupuestos', icon: Target },
   { href: '/savings', label: 'Ahorros', icon: PiggyBank },
-  { href: '/settings', label: 'Configuración', icon: Settings },
+  { href: '/shopping', label: 'Lista de Compras', icon: ShoppingCart },
 ];
 
 export default function Sidebar() {
@@ -84,14 +84,6 @@ export default function Sidebar() {
       </nav>
 
       <div className="px-3 py-4 border-t border-slate-100">
-        <Link
-          href="/settings"
-          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-all mb-3"
-        >
-          <Settings size={18} className="text-slate-400" />
-          Configuración
-        </Link>
-
         {/* Botón de cerrar sesión */}
         <Button
           variant="ghost"
