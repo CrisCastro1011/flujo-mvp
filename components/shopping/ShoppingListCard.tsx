@@ -154,17 +154,17 @@ export default function ShoppingListCard({ shoppingList }: ShoppingListCardProps
       </Card>
 
       <Dialog open={showDetailModal} onOpenChange={setShowDetailModal}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>{shoppingList.name}</DialogTitle>
+        <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] overflow-hidden flex flex-col mx-2">
+          <DialogHeader className="flex-shrink-0">
+            <DialogTitle className="text-xl">{shoppingList.name}</DialogTitle>
             {shoppingList.description && (
-              <DialogDescription>{shoppingList.description}</DialogDescription>
+              <DialogDescription className="text-sm">{shoppingList.description}</DialogDescription>
             )}
           </DialogHeader>
           
-          <div className="space-y-4">
+          <div className="flex-1 overflow-y-auto space-y-4">
             {/* Progress bar */}
-            <div>
+            <div className="flex-shrink-0">
               <div className="flex justify-between items-center text-sm text-gray-600 mb-2">
                 <span>Progreso total</span>
                 <span>{shoppingList.completedItems}/{shoppingList.totalItems}</span>
@@ -173,28 +173,35 @@ export default function ShoppingListCard({ shoppingList }: ShoppingListCardProps
             </div>
 
             {/* Add new item */}
-            <div className="border rounded-lg p-4 space-y-3">
+            <div className="border rounded-lg p-4 space-y-3 flex-shrink-0">
               <h4 className="font-medium text-gray-900">Agregar nuevo artículo</h4>
-              <div className="grid grid-cols-1 gap-3">
+              <div className="space-y-3">
                 <Input
                   placeholder="Nombre del producto"
                   value={newItemName}
                   onChange={(e) => setNewItemName(e.target.value)}
+                  className="ios-input-fix text-base sm:text-sm"
                 />
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <Input
                     placeholder="Precio (opcional)"
                     type="number"
                     value={newItemPrice}
                     onChange={(e) => setNewItemPrice(e.target.value)}
+                    className="ios-input-fix text-base sm:text-sm"
                   />
                   <Input
                     placeholder="Link (opcional)"
                     value={newItemLink}
                     onChange={(e) => setNewItemLink(e.target.value)}
+                    className="ios-input-fix text-base sm:text-sm"
                   />
                 </div>
-                <Button onClick={handleAddItem} className="gap-2" disabled={!newItemName.trim()}>
+                <Button 
+                  onClick={handleAddItem} 
+                  className="gap-2 w-full sm:w-auto min-h-[44px] sm:min-h-[36px]" 
+                  disabled={!newItemName.trim()}
+                >
                   <Plus size={16} />
                   Agregar
                 </Button>
@@ -202,39 +209,46 @@ export default function ShoppingListCard({ shoppingList }: ShoppingListCardProps
             </div>
 
             {/* Shopping items */}
-            <div className="space-y-2 max-h-96 overflow-y-auto">
+            <div className="space-y-2 flex-1 min-h-0">
               {shoppingList.items.length === 0 ? (
-                <p className="text-center text-gray-500 py-8">No hay artículos en esta lista</p>
+                <div className="text-center text-gray-500 py-8">
+                  <p>No hay artículos en esta lista</p>
+                  <p className="text-sm mt-1">Agrega tu primer producto arriba</p>
+                </div>
               ) : (
                 shoppingList.items.map((item) => (
                   <div 
                     key={item.id} 
-                    className={`flex items-center justify-between p-3 border rounded-lg ${
+                    className={`flex items-start sm:items-center justify-between p-3 border rounded-lg ${
                       item.completed ? 'bg-green-50 border-green-200' : 'bg-white'
                     }`}
                   >
-                    <div className="flex items-center space-x-3 flex-1">
-                      <Checkbox
-                        checked={item.completed}
-                        onCheckedChange={() => handleToggleItem(item.id)}
-                      />
-                      <div className="flex-1">
-                        <p className={`font-medium ${item.completed ? 'line-through text-green-700' : 'text-gray-900'}`}>
+                    <div className="flex items-start sm:items-center space-x-3 flex-1 min-w-0">
+                      <div className="flex-shrink-0 mt-1 sm:mt-0">
+                        <Checkbox
+                          checked={item.completed}
+                          onCheckedChange={() => handleToggleItem(item.id)}
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={`font-medium text-sm sm:text-base break-words ${item.completed ? 'line-through text-green-700' : 'text-gray-900'}`}>
                           {item.name}
                         </p>
-                        {item.price && (
-                          <p className="text-sm text-gray-600">
-                            ${item.price.toLocaleString()}
-                          </p>
-                        )}
-                        {item.completedAt && (
-                          <p className="text-xs text-green-600">
-                            Comprado: {new Date(item.completedAt).toLocaleDateString()}
-                          </p>
-                        )}
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 text-xs sm:text-sm text-gray-600 mt-1">
+                          {item.price && (
+                            <span>
+                              ${item.price.toLocaleString()}
+                            </span>
+                          )}
+                          {item.completedAt && (
+                            <span className="text-green-600">
+                              Comprado: {new Date(item.completedAt).toLocaleDateString()}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-1 sm:space-x-2 flex-shrink-0 ml-2">
                       {item.link && (
                         <Button
                           variant="ghost"
