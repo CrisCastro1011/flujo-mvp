@@ -45,16 +45,59 @@ export async function getUserBudgets(userId: string): Promise<Budget[]> {
       console.error('Error fetching budgets:', error);
       return [];
     }
+
+    if (!data || data.length === 0) {
+      return [];
+    }
+
+    // Obtener categorías para cada presupuesto
+    const budgetIds = data.map(budget => budget.id);
+    const { data: categoriesData, error: categoriesError } = await supabase
+      .from('budget_categories')
+      .select('*')
+      .in('budget_id', budgetIds);
+
+    if (categoriesError) {
+      console.error('Error fetching budget categories:', categoriesError);
+    }
+
+    // Agrupar categorías por presupuesto
+    const categoriesByBudgetId = (categoriesData || []).reduce((acc, cat) => {
+      if (!acc[cat.budget_id]) {
+        acc[cat.budget_id] = [];
+      }
+      acc[cat.budget_id].push({
+        id: cat.id,
+        budgetId: cat.budget_id,
+        name: cat.name,
+        limit: parseFloat(cat.limit_amount),
+        used: parseFloat(cat.used_amount),
+        color: cat.color,
+        icon: cat.icon
+      });
+      return acc;
+    }, {} as Record<string, any[]>);
     
     // Convertir nombres de columnas de DB a formato de aplicación
     return (data || []).map(row => ({
       id: row.id,
       userId: row.user_id,
-      category: row.category,
-      limit: parseFloat(row.limit_amount),
-      used: parseFloat(row.used_amount),
+      name: row.name,
+      type: row.type,
+      startDate: row.start_date,
+      endDate: row.end_date,
+      maxIncome: parseFloat(row.max_income),
+      maxSpendingLimit: parseFloat(row.max_spending_limit),
+      categories: categoriesByBudgetId[row.id] || [],
+      status: row.status,
+      totalSpent: parseFloat(row.total_spent),
+      remainingBalance: parseFloat(row.remaining_balance),
+      daysUntilNext: row.days_until_next,
       color: row.color,
-      icon: row.icon
+      icon: row.icon,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      isActive: row.is_active
     }));
   } catch (error) {
     console.error('Error fetching budgets:', error);
@@ -141,11 +184,21 @@ export async function saveBudget(budget: Omit<Budget, 'id'>): Promise<Budget | n
     // Convertir formato de aplicación a formato de DB
     const dbBudget = {
       user_id: budget.userId,
-      category: budget.category,
-      limit_amount: budget.limit,
-      used_amount: budget.used,
+      name: budget.name,
+      type: budget.type,
+      start_date: budget.startDate,
+      end_date: budget.endDate,
+      max_income: budget.maxIncome,
+      max_spending_limit: budget.maxSpendingLimit,
+      status: budget.status,
+      total_spent: budget.totalSpent,
+      remaining_balance: budget.remainingBalance,
+      days_until_next: budget.daysUntilNext,
       color: budget.color,
-      icon: budget.icon
+      icon: budget.icon,
+      is_active: budget.isActive,
+      created_at: budget.createdAt,
+      updated_at: budget.updatedAt
     };
     
     const { data, error } = await supabase
@@ -158,16 +211,47 @@ export async function saveBudget(budget: Omit<Budget, 'id'>): Promise<Budget | n
       console.error('Error saving budget:', error);
       return null;
     }
+
+    // Guardar categorías del presupuesto
+    if (budget.categories && budget.categories.length > 0) {
+      const dbCategories = budget.categories.map(cat => ({
+        budget_id: data.id,
+        name: cat.name,
+        limit_amount: cat.limit,
+        used_amount: cat.used,
+        color: cat.color,
+        icon: cat.icon
+      }));
+
+      const { error: catError } = await supabase
+        .from('budget_categories')
+        .insert(dbCategories);
+
+      if (catError) {
+        console.error('Error saving budget categories:', catError);
+      }
+    }
     
     // Convertir de vuelta a formato de aplicación
     return {
       id: data.id,
       userId: data.user_id,
-      category: data.category,
-      limit: parseFloat(data.limit_amount),
-      used: parseFloat(data.used_amount),
+      name: data.name,
+      type: data.type,
+      startDate: data.start_date,
+      endDate: data.end_date,
+      maxIncome: parseFloat(data.max_income),
+      maxSpendingLimit: parseFloat(data.max_spending_limit),
+      categories: budget.categories,
+      status: data.status,
+      totalSpent: parseFloat(data.total_spent),
+      remainingBalance: parseFloat(data.remaining_balance),
+      daysUntilNext: data.days_until_next,
       color: data.color,
-      icon: data.icon
+      icon: data.icon,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+      isActive: data.is_active
     };
   } catch (error) {
     console.error('Error saving budget:', error);

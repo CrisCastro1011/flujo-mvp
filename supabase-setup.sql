@@ -16,7 +16,28 @@ CREATE TABLE IF NOT EXISTS public.transactions (
 CREATE TABLE IF NOT EXISTS public.budgets (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id TEXT NOT NULL,
-  category TEXT NOT NULL,
+  name TEXT NOT NULL,
+  type TEXT NOT NULL CHECK (type IN ('monthly', 'bi-monthly', 'quarterly', 'semi-annual', 'annual')),
+  start_date DATE NOT NULL,
+  end_date DATE NOT NULL,
+  max_income DECIMAL NOT NULL,
+  max_spending_limit DECIMAL NOT NULL,
+  status TEXT NOT NULL DEFAULT 'on-track' CHECK (status IN ('on-track', 'warning', 'exceeded')),
+  total_spent DECIMAL DEFAULT 0,
+  remaining_balance DECIMAL NOT NULL,
+  days_until_next INTEGER NOT NULL,
+  color TEXT NOT NULL DEFAULT '#3B82F6',
+  icon TEXT NOT NULL DEFAULT 'Wallet',
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- NUEVA TABLA: CATEGORÍAS POR PRESUPUESTO
+CREATE TABLE IF NOT EXISTS public.budget_categories (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  budget_id UUID NOT NULL REFERENCES public.budgets(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
   limit_amount DECIMAL NOT NULL,
   used_amount DECIMAL DEFAULT 0,
   color TEXT NOT NULL,
