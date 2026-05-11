@@ -84,6 +84,38 @@ CREATE POLICY "Users can update their own budgets"
 CREATE POLICY "Users can delete their own budgets" 
   ON public.budgets FOR DELETE 
   USING (auth.uid()::text = user_id);
+
+CREATE POLICY "Users can view their own budget categories"
+  ON public.budget_categories FOR SELECT
+  USING (
+    budget_id IN (
+      SELECT id FROM public.budgets WHERE auth.uid()::text = user_id
+    )
+  );
+
+CREATE POLICY "Users can insert their own budget categories"
+  ON public.budget_categories FOR INSERT
+  WITH CHECK (
+    budget_id IN (
+      SELECT id FROM public.budgets WHERE auth.uid()::text = user_id
+    )
+  );
+
+CREATE POLICY "Users can update their own budget categories"
+  ON public.budget_categories FOR UPDATE
+  USING (
+    budget_id IN (
+      SELECT id FROM public.budgets WHERE auth.uid()::text = user_id
+    )
+  );
+
+CREATE POLICY "Users can delete their own budget categories"
+  ON public.budget_categories FOR DELETE
+  USING (
+    budget_id IN (
+      SELECT id FROM public.budgets WHERE auth.uid()::text = user_id
+    )
+  );
 ```
 
 **4. Haz clic en "Run"**
@@ -181,6 +213,38 @@ DROP TABLE public.budgets_old;
 ```sql
 ALTER TABLE public.budgets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.budget_categories ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view their own budget categories"
+  ON public.budget_categories FOR SELECT
+  USING (
+    budget_id IN (
+      SELECT id FROM public.budgets WHERE auth.uid()::text = user_id
+    )
+  );
+
+CREATE POLICY "Users can insert their own budget categories"
+  ON public.budget_categories FOR INSERT
+  WITH CHECK (
+    budget_id IN (
+      SELECT id FROM public.budgets WHERE auth.uid()::text = user_id
+    )
+  );
+
+CREATE POLICY "Users can update their own budget categories"
+  ON public.budget_categories FOR UPDATE
+  USING (
+    budget_id IN (
+      SELECT id FROM public.budgets WHERE auth.uid()::text = user_id
+    )
+  );
+
+CREATE POLICY "Users can delete their own budget categories"
+  ON public.budget_categories FOR DELETE
+  USING (
+    budget_id IN (
+      SELECT id FROM public.budgets WHERE auth.uid()::text = user_id
+    )
+  );
 ```
 
 ---

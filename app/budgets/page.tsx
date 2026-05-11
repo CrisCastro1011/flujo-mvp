@@ -1,15 +1,16 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, TriangleAlert as AlertTriangle, CircleCheck as CheckCircle, TrendingUp, Clock, Target } from 'lucide-react';
+import { Pencil, Plus, Trash2, TriangleAlert as AlertTriangle, CircleCheck as CheckCircle, TrendingUp, Clock, Target } from 'lucide-react';
 import { useFinance } from '@/context/FinanceContext';
 import BudgetCard from '@/components/budgets/BudgetCard';
 import CreateBudgetModal from '@/components/budgets/CreateBudgetModal';
 import { Budget } from '@/lib/types';
 
 export default function BudgetsPage() {
-  const { budgets, loading } = useFinance();
+  const { budgets, loading, deleteBudget } = useFinance();
   const [modalOpen, setModalOpen] = useState(false);
+  const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
 
   // Filtrar solo presupuestos activos
   const activeBudgets = budgets.filter((b: Budget) => b.isActive);
@@ -31,6 +32,32 @@ export default function BudgetsPage() {
     if (percentage > 100) return { status: 'exceeded', color: 'red', text: 'Límite Superado' };
     if (percentage > 80) return { status: 'warning', color: 'yellow', text: 'Cerca del límite' };
     return { status: 'on-track', color: 'green', text: 'Vas bien' };
+  };
+
+  const handleCreateBudget = () => {
+    setEditingBudget(null);
+    setModalOpen(true);
+  };
+
+  const handleEditBudget = (budget: Budget) => {
+    setEditingBudget(budget);
+    setModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setModalOpen(false);
+    setEditingBudget(null);
+  };
+
+  const handleDeleteBudget = async (budget: Budget) => {
+    const confirmed = window.confirm(`¿Eliminar el presupuesto "${budget.name}"?`);
+    if (!confirmed) return;
+
+    try {
+      await deleteBudget(budget.id);
+    } catch (error) {
+      console.error('Error deleting budget:', error);
+    }
   };
 
   if (loading) {
@@ -55,7 +82,7 @@ export default function BudgetsPage() {
           <p className="text-slate-500 mt-1">Control real de tus finanzas basado en tu ciclo de cobro</p>
         </div>
         <button
-          onClick={() => setModalOpen(true)}
+          onClick={handleCreateBudget}
           className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all active:scale-95"
         >
           <Plus size={16} />
@@ -135,6 +162,20 @@ export default function BudgetsPage() {
                     </div>
                   );
                 })()}
+                <button
+                  onClick={() => handleEditBudget(currentBudget)}
+                  className="p-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
+                  aria-label={`Editar ${currentBudget.name}`}
+                >
+                  <Pencil size={16} />
+                </button>
+                <button
+                  onClick={() => handleDeleteBudget(currentBudget)}
+                  className="p-2 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 transition-colors"
+                  aria-label={`Eliminar ${currentBudget.name}`}
+                >
+                  <Trash2 size={16} />
+                </button>
               </div>
             </div>
 
@@ -238,7 +279,7 @@ export default function BudgetsPage() {
               <h3 className="text-lg font-semibold text-slate-900 mb-4">Todos los Presupuestos</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {budgets.map(budget => (
-                  <BudgetCard key={budget.id} budget={budget} />
+                  <BudgetCard key={budget.id} budget={budget} onEdit={handleEditBudget} />
                 ))}
               </div>
             </div>
@@ -256,7 +297,7 @@ export default function BudgetsPage() {
             Controla tus gastos de manera inteligente.
           </p>
           <button
-            onClick={() => setModalOpen(true)}
+            onClick={handleCreateBudget}
             className="px-8 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200"
           >
             Crear Mi Primer Presupuesto
@@ -264,7 +305,7 @@ export default function BudgetsPage() {
         </div>
       )}
 
-      <CreateBudgetModal isOpen={modalOpen} onClose={() => setModalOpen(false)} />
+      <CreateBudgetModal isOpen={modalOpen} onClose={handleCloseModal} initialBudget={editingBudget} />
     </div>
   );
 }

@@ -11,6 +11,7 @@ import {
   getUserSavingsGoals,
   saveTransaction,
   saveBudget,
+  updateBudgetInDB,
   saveSavingsGoal,
   deleteTransactionFromDB,
   deleteBudgetFromDB,
@@ -31,6 +32,7 @@ interface FinanceContextType {
   loading: boolean;
   addTransaction: (transaction: Omit<Transaction, 'id' | 'userId'>) => Promise<void>;
   addBudget: (budget: Omit<Budget, 'id' | 'userId'>) => Promise<void>;
+  updateBudget: (id: string, budget: Omit<Budget, 'id' | 'userId'>) => Promise<void>;
   addSavingsGoal: (goal: Omit<SavingsGoal, 'id' | 'userId'>) => Promise<void>;
   updateSavingsGoal: (id: string, amount: number) => Promise<void>;
   deleteBudget: (id: string) => Promise<void>;
@@ -265,6 +267,21 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const updateBudget = async (id: string, budget: Omit<Budget, 'id' | 'userId'>) => {
+    if (hasValidConfig) {
+      const updatedBudget = await updateBudgetInDB(id, budget);
+      if (updatedBudget) {
+        setBudgets(prev => prev.map(item => item.id === id ? updatedBudget : item));
+      }
+    } else {
+      setBudgets(prev => prev.map(item => item.id === id ? {
+        ...item,
+        ...budget,
+        updatedAt: budget.updatedAt
+      } : item));
+    }
+  };
+
   const addSavingsGoal = async (goal: Omit<SavingsGoal, 'id' | 'userId'>) => {
     if (!user) return;
     
@@ -394,6 +411,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       loading,
       addTransaction,
       addBudget,
+      updateBudget,
       addSavingsGoal,
       updateSavingsGoal,
       deleteBudget,

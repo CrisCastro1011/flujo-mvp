@@ -259,6 +259,100 @@ export async function saveBudget(budget: Omit<Budget, 'id'>): Promise<Budget | n
   }
 }
 
+export async function updateBudgetInDB(id: string, budget: Omit<Budget, 'id' | 'userId'>): Promise<Budget | null> {
+  if (!hasValidConfig) return null;
+
+  try {
+    const dbBudget = {
+      name: budget.name,
+      type: budget.type,
+      start_date: budget.startDate,
+      end_date: budget.endDate,
+      max_income: budget.maxIncome,
+      max_spending_limit: budget.maxSpendingLimit,
+      status: budget.status,
+      total_spent: budget.totalSpent,
+      remaining_balance: budget.remainingBalance,
+      days_until_next: budget.daysUntilNext,
+      color: budget.color,
+      icon: budget.icon,
+      is_active: budget.isActive,
+      updated_at: budget.updatedAt
+    };
+
+    const { data, error } = await supabase
+      .from('budgets')
+      .update(dbBudget)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating budget:', error);
+      return null;
+    }
+
+    const { error: deleteCategoriesError } = await supabase
+      .from('budget_categories')
+      .delete()
+      .eq('budget_id', id);
+
+    if (deleteCategoriesError) {
+      console.error('Error deleting previous budget categories:', deleteCategoriesError);
+      return null;
+    }
+
+    if (budget.categories.length > 0) {
+      const dbCategories = budget.categories.map(cat => ({
+        budget_id: id,
+        name: cat.name,
+        limit_amount: cat.limit,
+        used_amount: cat.used,
+        color: cat.color,
+        icon: cat.icon
+      }));
+
+      const { error: insertCategoriesError } = await supabase
+        .from('budget_categories')
+        .insert(dbCategories)
+        .select();
+
+      if (insertCategoriesError) {
+        console.error('Error updating budget categories:', insertCategoriesError);
+        return null;
+      }
+    }
+
+    return {
+      id: data.id,
+      userId: data.user_id,
+      name: data.name,
+      type: data.type,
+      startDate: data.start_date,
+      endDate: data.end_date,
+      maxIncome: parseFloat(data.max_income),
+      maxSpendingLimit: parseFloat(data.max_spending_limit),
+      categories: budget.categories.map((category, index) => ({
+        ...category,
+        id: category.id || `cat-${id}-${index}`,
+        budgetId: id
+      })),
+      status: data.status,
+      totalSpent: parseFloat(data.total_spent),
+      remainingBalance: parseFloat(data.remaining_balance),
+      daysUntilNext: data.days_until_next,
+      color: data.color,
+      icon: data.icon,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+      isActive: data.is_active
+    };
+  } catch (error) {
+    console.error('Error updating budget:', error);
+    return null;
+  }
+}
+
 export async function saveSavingsGoal(goal: Omit<SavingsGoal, 'id'>): Promise<SavingsGoal | null> {
   if (!hasValidConfig) return null;
   

@@ -116,6 +116,15 @@ END $$;
 DO $$
 BEGIN
   IF NOT EXISTS (
+    SELECT 1 FROM pg_tables WHERE tablename = 'budget_categories' AND rowsecurity = true
+  ) THEN
+    ALTER TABLE public.budget_categories ENABLE ROW LEVEL SECURITY;
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
     SELECT 1 FROM pg_tables WHERE tablename = 'savings_goals' AND rowsecurity = true
   ) THEN
     ALTER TABLE public.savings_goals ENABLE ROW LEVEL SECURITY;
@@ -160,6 +169,39 @@ CREATE POLICY "Users can update own budgets" ON public.budgets
 DROP POLICY IF EXISTS "Users can delete own budgets" ON public.budgets;
 CREATE POLICY "Users can delete own budgets" ON public.budgets
   FOR DELETE USING (auth.uid()::text = user_id);
+
+-- Categorías de presupuestos
+DROP POLICY IF EXISTS "Users can view own budget_categories" ON public.budget_categories;
+CREATE POLICY "Users can view own budget_categories" ON public.budget_categories
+  FOR SELECT USING (
+    budget_id IN (
+      SELECT id FROM public.budgets WHERE auth.uid()::text = user_id
+    )
+  );
+
+DROP POLICY IF EXISTS "Users can insert own budget_categories" ON public.budget_categories;
+CREATE POLICY "Users can insert own budget_categories" ON public.budget_categories
+  FOR INSERT WITH CHECK (
+    budget_id IN (
+      SELECT id FROM public.budgets WHERE auth.uid()::text = user_id
+    )
+  );
+
+DROP POLICY IF EXISTS "Users can update own budget_categories" ON public.budget_categories;
+CREATE POLICY "Users can update own budget_categories" ON public.budget_categories
+  FOR UPDATE USING (
+    budget_id IN (
+      SELECT id FROM public.budgets WHERE auth.uid()::text = user_id
+    )
+  );
+
+DROP POLICY IF EXISTS "Users can delete own budget_categories" ON public.budget_categories;
+CREATE POLICY "Users can delete own budget_categories" ON public.budget_categories
+  FOR DELETE USING (
+    budget_id IN (
+      SELECT id FROM public.budgets WHERE auth.uid()::text = user_id
+    )
+  );
 
 -- Metas de Ahorro
 DROP POLICY IF EXISTS "Users can view own savings_goals" ON public.savings_goals;

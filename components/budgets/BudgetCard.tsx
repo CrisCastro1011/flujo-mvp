@@ -2,7 +2,7 @@
 
 import { Budget } from '@/lib/types';
 import { 
-  Trash2, Chrome as Home, ShoppingCart, Utensils, Car, Tv, Heart, Wallet, 
+  Pencil, Trash2, Chrome as Home, ShoppingCart, Utensils, Car, Tv, Heart, Wallet, 
   TrendingUp, Calendar, DollarSign, Target, Clock, AlertTriangle 
 } from 'lucide-react';
 import { useFinance } from '@/context/FinanceContext';
@@ -13,9 +13,10 @@ const iconMap: Record<string, React.ElementType> = {
 
 interface BudgetCardProps {
   budget: Budget;
+  onEdit?: (budget: Budget) => void;
 }
 
-export default function BudgetCard({ budget }: BudgetCardProps) {
+export default function BudgetCard({ budget, onEdit }: BudgetCardProps) {
   const { deleteBudget } = useFinance();
   
   // Calcular totales
@@ -46,6 +47,17 @@ export default function BudgetCard({ budget }: BudgetCardProps) {
     return `${days} días`;
   };
 
+  const handleDelete = async () => {
+    const confirmed = window.confirm(`¿Eliminar el presupuesto "${budget.name}"?`);
+    if (!confirmed) return;
+
+    try {
+      await deleteBudget(budget.id);
+    } catch (error) {
+      console.error('Error deleting budget:', error);
+    }
+  };
+
   return (
     <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 hover:shadow-lg transition-all duration-200 group">
       {/* Header con información básica */}
@@ -68,17 +80,22 @@ export default function BudgetCard({ budget }: BudgetCardProps) {
           <div className={`px-2 py-1 rounded-full text-xs font-medium ${status.bgColor} ${status.textColor}`}>
             {status.text}
           </div>
+
+          {onEdit && (
+            <button
+              onClick={() => onEdit(budget)}
+              className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-blue-50 transition-all"
+              aria-label={`Editar ${budget.name}`}
+            >
+              <Pencil size={14} className="text-blue-500" />
+            </button>
+          )}
           
           {/* Botón eliminar */}
           <button
-            onClick={async () => {
-              try {
-                await deleteBudget(budget.id);
-              } catch (error) {
-                console.error('Error deleting budget:', error);
-              }
-            }}
+            onClick={handleDelete}
             className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-red-50 transition-all"
+            aria-label={`Eliminar ${budget.name}`}
           >
             <Trash2 size={14} className="text-red-400" />
           </button>

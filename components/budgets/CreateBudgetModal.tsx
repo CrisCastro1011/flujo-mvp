@@ -1,19 +1,21 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { X, Plus, Trash2, Calendar, DollarSign, Target } from 'lucide-react';
-import { BudgetType, BudgetCategory } from '@/lib/types';
+import { useEffect, useState } from 'react';
+import { Calendar, DollarSign, Info, Plus, Target, Trash2, X } from 'lucide-react';
+import { Budget, BudgetCategory, BudgetType } from '@/lib/types';
 import { useFinance } from '@/context/FinanceContext';
 import { useCategories } from '@/context/CategoriesContext';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Info } from 'lucide-react';
 import { hasValidConfig } from '@/lib/supabase';
 
 interface CreateBudgetModalProps {
   isOpen: boolean;
   onClose: () => void;
+  initialBudget?: Budget | null;
 }
+
+type EditableBudgetCategory = Omit<BudgetCategory, 'id' | 'budgetId'>;
 
 const budgetTypeOptions: { value: BudgetType; label: string }[] = [
   { value: 'monthly', label: 'Mensual' },
@@ -23,68 +25,98 @@ const budgetTypeOptions: { value: BudgetType; label: string }[] = [
   { value: 'annual', label: 'Anual' }
 ];
 
-const categoryIcons = [
-  'Home', 'ShoppingCart', 'Utensils', 'Car', 'Tv', 'Heart', 'Gamepad2', 
-  'GraduationCap', 'Shirt', 'Fuel', 'Coffee', 'Phone', 'Zap', 'Wifi'
-];
-
-const categoryColors = [
-  '#3B82F6', '#10B981', '#F97316', '#14B8A6', '#EC4899', '#F59E0B', 
-  '#EF4444', '#64748B', '#8B5CF6', '#06B6D4', '#84CC16', '#F43F5E'
-];
-
-export default function CreateBudgetModal({ isOpen, onClose }: CreateBudgetModalProps) {
-  const { addBudget } = useFinance();
-  const { expenseCategories, loading: categoriesLoading } = useCategories();
+export default function CreateBudgetModal({ isOpen, onClose, initialBudget = null }: CreateBudgetModalProps) {
+  const { addBudget, updateBudget } = useFinance();
+  const { expenseCategories } = useCategories();
   const { toast } = useToast();
-  
-  // Estados del formulario principal
+  const isEditing = Boolean(initialBudget);
+
   const [name, setName] = useState('');
   const [type, setType] = useState<BudgetType>('monthly');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [maxIncome, setMaxIncome] = useState('');
   const [maxSpendingLimit, setMaxSpendingLimit] = useState('');
-  
-  // Estados para las categorías - inicializar con categorías del contexto
-  const [categories, setCategories] = useState<Omit<BudgetCategory, 'id' | 'budgetId' | 'used'>[]>([]);
-  
-  // Inicializar categorías cuando se cargan del contexto
-  useEffect(() => {
-    if (expenseCategories.length > 0 && categories.length === 0) {
-      const defaultBudgetCategories = expenseCategories.slice(0, 5).map(cat => ({
-        name: cat.name,
-        limit: 0,
-        color: cat.color,
-        icon: cat.icon
-      }));
-      setCategories(defaultBudgetCategories);
-    }
-  }, [expenseCategories, categories.length]);
-  
-  // Estado para nueva categoría - usar categorías disponibles del contexto
+  const [categories, setCategories] = useState<EditableBudgetCategory[]>([]);
   const [newCategory, setNewCategory] = useState({
     name: '',
     limit: '',
     color: '#3B82F6',
     icon: 'DollarSign'
   });
-
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const getDefaultBudgetCategories = () => {
+    return expenseCategories.slice(0, 5).map(category => ({
+      name: category.name,
+      limit: 0,
+      used: 0,
+      color: category.color,
+      icon: category.icon
+    }));
+  };
+
+  const resetForm = (budget?: Budget | null) => {
+    if (budget) {
+      setName(budget.name);
+      setType(budget.type);
+      setStartDate(budget.startDate);
+      setEndDate(budget.endDate);
+      setMaxIncome(String(budget.maxIncome));
+      setMaxSpendingLimit(String(budget.maxSpendingLimit));
+      setCategories(
+        budget.categories.map(category => ({
+          name: category.name,
+          limit: category.limit,
+          used: category.used,
+          color: category.color,
+          icon: category.icon
+        }))
+      );
+    } else {
+      setName('');
+      setType('monthly');
+      setStartDate('');
+      setEndDate('');
+      setMaxIncome('');
+      setMaxSpendingLimit('');
+      setCategories(getDefaultBudgetCategories());
+    }
+
+    setNewCategory({
+      name: '',
+      limit: '',
+      color: '#3B82F6',
+      icon: 'DollarSign'
+    });
+  };
+
+  useEffect(() => {
+    if (!isOpen) return;
+    resetForm(initialBudget);
+  }, [isOpen, initialBudget]);
+
+  useEffect(() => {
+    if (!isOpen || isEditing || expenseCategories.length === 0 || categories.length > 0) return;
+    setCategories(getDefaultBudgetCategories());
+  }, [isOpen, isEditing, expenseCategories, categories.length]);
 
   const handleAddCategory = () => {
     if (!newCategory.name || !newCategory.limit) return;
-    
-    // Buscar la categoría seleccionada en el contexto para obtener su color e ícono
-    const selectedCategory = expenseCategories.find(cat => cat.name === newCategory.name);
-    
-    setCategories([...categories, {
-      name: newCategory.name,
-      limit: parseFloat(newCategory.limit),
-      color: selectedCategory?.color || '#3B82F6',
-      icon: selectedCategory?.icon || 'DollarSign'
-    }]);
-    
+
+    const selectedCategory = expenseCategories.find(category => category.name === newCategory.name);
+
+    setCategories(prev => [
+      ...prev,
+      {
+        name: newCategory.name,
+        limit: parseFloat(newCategory.limit),
+        used: 0,
+        color: selectedCategory?.color || '#3B82F6',
+        icon: selectedCategory?.icon || 'DollarSign'
+      }
+    ]);
+
     setNewCategory({
       name: '',
       limit: '',
@@ -94,17 +126,18 @@ export default function CreateBudgetModal({ isOpen, onClose }: CreateBudgetModal
   };
 
   const handleRemoveCategory = (index: number) => {
-    setCategories(categories.filter((_, i) => i !== index));
+    setCategories(prev => prev.filter((_, currentIndex) => currentIndex !== index));
   };
 
-  const handleUpdateCategory = (index: number, field: string, value: string | number) => {
-    const updated = [...categories];
-    updated[index] = { ...updated[index], [field]: value };
-    setCategories(updated);
+  const handleUpdateCategory = (index: number, field: 'name' | 'limit', value: string | number) => {
+    setCategories(prev => prev.map((category, currentIndex) => {
+      if (currentIndex !== index) return category;
+      return { ...category, [field]: value };
+    }));
   };
 
   const calculateTotalCategoryLimits = () => {
-    return categories.reduce((sum, cat) => sum + cat.limit, 0);
+    return categories.reduce((sum, category) => sum + category.limit, 0);
   };
 
   const calculateDaysUntilNext = () => {
@@ -115,84 +148,76 @@ export default function CreateBudgetModal({ isOpen, onClose }: CreateBudgetModal
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
     if (!name || !startDate || !endDate || !maxIncome || !maxSpendingLimit) return;
-    
+
     setIsSubmitting(true);
-    
+
     try {
-      const budgetCategories: BudgetCategory[] = categories.map((cat, index) => ({
-        id: `cat-${Date.now()}-${index}`,
-        budgetId: '', // Se asignará después
-        name: cat.name,
-        limit: cat.limit,
-        used: 0,
-        color: cat.color,
-        icon: cat.icon
+      const budgetCategories: BudgetCategory[] = categories.map((category, index) => ({
+        id: `cat-${initialBudget?.id || Date.now()}-${index}`,
+        budgetId: initialBudget?.id || '',
+        name: category.name,
+        limit: category.limit,
+        used: category.used,
+        color: category.color,
+        icon: category.icon
       }));
 
-      const totalSpent = 0; // Empezar con 0
-      const remainingBalance = parseFloat(maxIncome) - totalSpent;
+      const totalSpent = budgetCategories.reduce((sum, category) => sum + category.used, 0);
+      const spendingLimit = parseFloat(maxSpendingLimit);
+      const income = parseFloat(maxIncome);
+      const remainingBalance = income - totalSpent;
       const daysUntilNext = calculateDaysUntilNext();
-      
+
       let status: 'on-track' | 'warning' | 'exceeded' = 'on-track';
-      if (totalSpent > parseFloat(maxSpendingLimit)) {
+      if (totalSpent > spendingLimit) {
         status = 'exceeded';
-      } else if (totalSpent > parseFloat(maxSpendingLimit) * 0.8) {
+      } else if (totalSpent > spendingLimit * 0.8) {
         status = 'warning';
       }
 
-      await addBudget({
+      const budgetPayload = {
         name,
         type,
         startDate,
         endDate,
-        maxIncome: parseFloat(maxIncome),
-        maxSpendingLimit: parseFloat(maxSpendingLimit),
+        maxIncome: income,
+        maxSpendingLimit: spendingLimit,
         categories: budgetCategories,
         status,
         totalSpent,
         remainingBalance,
         daysUntilNext,
-        color: '#3B82F6',
-        icon: 'Wallet',
-        isActive: true
-      });
+        color: initialBudget?.color || '#3B82F6',
+        icon: initialBudget?.icon || 'Wallet',
+        createdAt: initialBudget?.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        isActive: initialBudget?.isActive ?? true
+      };
 
-      // Feedback al usuario
-      toast({
-        title: "Presupuesto creado exitosamente",
-        description: hasValidConfig 
-          ? `"${name}" ha sido guardado en tu cuenta.`
-          : `"${name}" ha sido creado (modo demo).`,
-      });
-
-      // Reset form
-      setName('');
-      setType('monthly');
-      setStartDate('');
-      setEndDate('');
-      setMaxIncome('');
-      setMaxSpendingLimit('');
-      // Reinicializar con categorías del contexto
-      if (expenseCategories.length > 0) {
-        const defaultBudgetCategories = expenseCategories.slice(0, 3).map(cat => ({
-          name: cat.name,
-          limit: 0,
-          color: cat.color,
-          icon: cat.icon
-        }));
-        setCategories(defaultBudgetCategories);
+      if (initialBudget) {
+        await updateBudget(initialBudget.id, budgetPayload);
+      } else {
+        await addBudget(budgetPayload);
       }
-      
+
+      toast({
+        title: initialBudget ? 'Presupuesto actualizado' : 'Presupuesto creado exitosamente',
+        description: hasValidConfig
+          ? `"${name}" ha sido ${initialBudget ? 'actualizado' : 'guardado'} en tu cuenta.`
+          : `"${name}" ha sido ${initialBudget ? 'actualizado' : 'creado'} (modo demo).`,
+      });
+
+      resetForm(null);
       onClose();
     } catch (error) {
-      console.error('Error creating budget:', error);
+      console.error('Error saving budget:', error);
       toast({
-        title: "Error al crear presupuesto",
-        description: "No se pudo crear el presupuesto. Por favor intenta de nuevo.",
-        variant: "destructive"
+        title: `Error al ${initialBudget ? 'actualizar' : 'crear'} presupuesto`,
+        description: `No se pudo ${initialBudget ? 'actualizar' : 'crear'} el presupuesto. Por favor intenta de nuevo.`,
+        variant: 'destructive'
       });
     } finally {
       setIsSubmitting(false);
@@ -211,8 +236,12 @@ export default function CreateBudgetModal({ isOpen, onClose }: CreateBudgetModal
         <div className="p-4 sm:p-6 border-b border-slate-100">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg sm:text-xl font-bold text-slate-900">Crear Presupuesto</h2>
-              <p className="text-xs sm:text-sm text-slate-500 mt-1">Configura tu presupuesto personalizado</p>
+              <h2 className="text-lg sm:text-xl font-bold text-slate-900">
+                {initialBudget ? 'Editar Presupuesto' : 'Crear Presupuesto'}
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-500 mt-1">
+                {initialBudget ? 'Ajusta tu presupuesto actual' : 'Configura tu presupuesto personalizado'}
+              </p>
             </div>
             <button
               onClick={onClose}
@@ -221,7 +250,7 @@ export default function CreateBudgetModal({ isOpen, onClose }: CreateBudgetModal
               <X size={20} className="text-slate-500" />
             </button>
           </div>
-          
+
           {!hasValidConfig && (
             <Alert className="bg-blue-50 border-blue-200 mt-4">
               <Info className="h-4 w-4" />
@@ -234,10 +263,9 @@ export default function CreateBudgetModal({ isOpen, onClose }: CreateBudgetModal
 
         <div className="overflow-y-auto max-h-[calc(95vh-200px)] sm:max-h-[calc(90vh-140px)]">
           <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-6">
-            {/* Información básica */}
             <div className="space-y-4">
               <h3 className="font-semibold text-slate-900 text-lg">Información Básica</h3>
-              
+
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">
                   Nombre del Presupuesto
@@ -245,7 +273,7 @@ export default function CreateBudgetModal({ isOpen, onClose }: CreateBudgetModal
                 <input
                   type="text"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={(event) => setName(event.target.value)}
                   placeholder="Ej: Presupuesto Abril"
                   className="w-full px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-base sm:text-sm ios-input-fix"
                   required
@@ -258,7 +286,7 @@ export default function CreateBudgetModal({ isOpen, onClose }: CreateBudgetModal
                 </label>
                 <select
                   value={type}
-                  onChange={(e) => setType(e.target.value as BudgetType)}
+                  onChange={(event) => setType(event.target.value as BudgetType)}
                   className="w-full px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-base sm:text-sm ios-input-fix"
                 >
                   {budgetTypeOptions.map(option => (
@@ -278,12 +306,12 @@ export default function CreateBudgetModal({ isOpen, onClose }: CreateBudgetModal
                   <input
                     type="date"
                     value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
+                    onChange={(event) => setStartDate(event.target.value)}
                     className="w-full px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-base sm:text-sm ios-input-fix"
                     required
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
                     <Calendar size={16} className="inline mr-1" />
@@ -292,7 +320,7 @@ export default function CreateBudgetModal({ isOpen, onClose }: CreateBudgetModal
                   <input
                     type="date"
                     value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
+                    onChange={(event) => setEndDate(event.target.value)}
                     className="w-full px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-base sm:text-sm ios-input-fix"
                     required
                   />
@@ -308,13 +336,13 @@ export default function CreateBudgetModal({ isOpen, onClose }: CreateBudgetModal
                   <input
                     type="number"
                     value={maxIncome}
-                    onChange={(e) => setMaxIncome(e.target.value)}
+                    onChange={(event) => setMaxIncome(event.target.value)}
                     placeholder="50000"
                     className="w-full px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-base sm:text-sm ios-input-fix"
                     required
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
                     <Target size={16} className="inline mr-1" />
@@ -323,7 +351,7 @@ export default function CreateBudgetModal({ isOpen, onClose }: CreateBudgetModal
                   <input
                     type="number"
                     value={maxSpendingLimit}
-                    onChange={(e) => setMaxSpendingLimit(e.target.value)}
+                    onChange={(event) => setMaxSpendingLimit(event.target.value)}
                     placeholder="40000"
                     className="w-full px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-base sm:text-sm ios-input-fix"
                     required
@@ -332,7 +360,6 @@ export default function CreateBudgetModal({ isOpen, onClose }: CreateBudgetModal
               </div>
             </div>
 
-            {/* Categorías existentes */}
             <div className="space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <h3 className="font-semibold text-slate-900 text-lg">Categorías de Gasto</h3>
@@ -356,30 +383,30 @@ export default function CreateBudgetModal({ isOpen, onClose }: CreateBudgetModal
                 {categories.map((category, index) => (
                   <div key={index} className="flex flex-col sm:flex-row items-start sm:items-center gap-3 p-3 bg-slate-50 rounded-xl">
                     <div className="flex items-center gap-3 w-full sm:w-auto">
-                      <div 
+                      <div
                         className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-sm flex-shrink-0"
                         style={{ backgroundColor: category.color }}
                       >
                         💰
                       </div>
-                      
+
                       <input
                         type="text"
                         value={category.name}
-                        onChange={(e) => handleUpdateCategory(index, 'name', e.target.value)}
+                        onChange={(event) => handleUpdateCategory(index, 'name', event.target.value)}
                         className="flex-1 sm:w-40 px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-base sm:text-sm ios-input-fix"
                       />
                     </div>
-                    
+
                     <div className="flex items-center gap-2 w-full sm:w-auto">
                       <span className="text-sm text-slate-500">$</span>
                       <input
                         type="number"
                         value={category.limit}
-                        onChange={(e) => handleUpdateCategory(index, 'limit', parseFloat(e.target.value) || 0)}
+                        onChange={(event) => handleUpdateCategory(index, 'limit', parseFloat(event.target.value) || 0)}
                         className="flex-1 sm:w-32 px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-base sm:text-sm ios-input-fix"
                       />
-                      
+
                       <button
                         type="button"
                         onClick={() => handleRemoveCategory(index)}
@@ -392,52 +419,50 @@ export default function CreateBudgetModal({ isOpen, onClose }: CreateBudgetModal
                 ))}
               </div>
 
-              {/* Agregar nueva categoría */}
               <div className="border-2 border-dashed border-slate-200 rounded-xl p-4">
                 <div className="space-y-3 sm:space-y-0 sm:flex sm:items-center sm:gap-3">
                   <div className="flex items-center gap-3 flex-1">
-                    <div 
+                    <div
                       className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-sm flex-shrink-0"
                       style={{ backgroundColor: '#3B82F6' }}
                     >
                       💰
                     </div>
-                    
+
                     {expenseCategories.length > 0 ? (
                       <select
                         value={newCategory.name}
-                        onChange={(e) => setNewCategory({...newCategory, name: e.target.value})}
+                        onChange={(event) => setNewCategory(prev => ({ ...prev, name: event.target.value }))}
                         className="flex-1 px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-base sm:text-sm ios-input-fix"
                       >
                         <option value="">Seleccionar categoría...</option>
                         {expenseCategories
-                          .filter(cat => !categories.some(existing => existing.name === cat.name))
-                          .map(cat => (
-                            <option key={cat.id} value={cat.name}>{cat.name}</option>
-                          ))
-                        }
+                          .filter(category => !categories.some(existing => existing.name === category.name))
+                          .map(category => (
+                            <option key={category.id} value={category.name}>{category.name}</option>
+                          ))}
                       </select>
                     ) : (
                       <input
                         type="text"
                         value={newCategory.name}
-                        onChange={(e) => setNewCategory({...newCategory, name: e.target.value})}
+                        onChange={(event) => setNewCategory(prev => ({ ...prev, name: event.target.value }))}
                         placeholder="Nombre de categoría"
                         className="flex-1 px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-base sm:text-sm ios-input-fix"
                       />
                     )}
                   </div>
-                  
+
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-slate-500">$</span>
                     <input
                       type="number"
                       value={newCategory.limit}
-                      onChange={(e) => setNewCategory({...newCategory, limit: e.target.value})}
+                      onChange={(event) => setNewCategory(prev => ({ ...prev, limit: event.target.value }))}
                       placeholder="0"
                       className="w-full sm:w-32 px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-base sm:text-sm ios-input-fix"
                     />
-                    
+
                     <button
                       type="button"
                       onClick={handleAddCategory}
@@ -468,7 +493,7 @@ export default function CreateBudgetModal({ isOpen, onClose }: CreateBudgetModal
               disabled={isSubmitting || !name || !startDate || !endDate || !maxIncome || !maxSpendingLimit}
               className="w-full sm:flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] sm:min-h-[36px]"
             >
-              {isSubmitting ? 'Creando...' : 'Crear Presupuesto'}
+              {isSubmitting ? 'Guardando...' : initialBudget ? 'Guardar cambios' : 'Crear Presupuesto'}
             </button>
           </div>
         </div>
