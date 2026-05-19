@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import Sidebar from './Sidebar';
 import MobileNav from './MobileNav';
 import BudgetNotification from '@/components/ui/BudgetNotification';
+import AiAssistant from '@/components/ai/AiAssistant';
 import { FinanceProvider } from '@/context/FinanceContext';
 import { CategoriesProvider } from '@/context/CategoriesContext';
 import { AuthProvider } from '@/context/AuthContext';
@@ -34,6 +35,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                 </main>
                 <MobileNav />
                 <BudgetNotification />
+                <AiAssistant />
               </div>
             </FinanceProvider>
           </CategoriesProvider>
