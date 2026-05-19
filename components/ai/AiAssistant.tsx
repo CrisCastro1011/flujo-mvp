@@ -2,8 +2,7 @@
 
 import { useChat } from 'ai/react';
 import { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, Bot, User, Loader2, Sparkles } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { X, Send, Bot, User, Loader2, Sparkles } from 'lucide-react';
 import { useFinance } from '@/context/FinanceContext';
 
 export default function AiAssistant() {
@@ -70,6 +69,18 @@ export default function AiAssistant() {
     api: '/api/chat',
     body: {
       context: buildContext(),
+    },
+    onError: (error) => {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `error-${Date.now()}`,
+          role: 'assistant',
+          content:
+            'No pude responder en este momento. Verifica la variable GOOGLE_GENERATIVE_AI_API_KEY en Netlify y vuelve a intentar.',
+        },
+      ]);
+      console.error('[AiAssistant] chat error:', error);
     },
   });
 
