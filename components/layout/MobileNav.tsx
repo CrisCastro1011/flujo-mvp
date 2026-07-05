@@ -15,7 +15,7 @@ const navItems = [
   { href: '/budgets', label: 'Presupuestos', icon: Target, shortLabel: 'Presup.' },
   { href: '/shopping', label: 'Listas de Compras', icon: ShoppingBag, shortLabel: 'Compras' },
   { href: '/savings', label: 'Ahorros', icon: PiggyBank, shortLabel: 'Ahorros' },
-  { href: '/settings', label: 'Configuración', icon: Settings, shortLabel: 'Config.' },
+  { href: '/settings', label: 'Ajustes', icon: Settings, shortLabel: 'Ajustes' },
 ];
 
 export default function MobileNav() {
@@ -115,7 +115,7 @@ export default function MobileNav() {
                 )}
               >
                 <Settings size={20} className={pathname === '/settings' ? "text-blue-600" : "text-slate-400"} />
-                <span className="font-medium">Configuración</span>
+                <span className="font-medium">Ajustes</span>
               </Link>
               
               <Button

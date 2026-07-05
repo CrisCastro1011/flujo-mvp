@@ -13,6 +13,7 @@ const navItems = [
   { href: '/budgets', label: 'Presupuestos', icon: Target },
   { href: '/savings', label: 'Ahorros', icon: PiggyBank },
   { href: '/shopping', label: 'Lista de Compras', icon: ShoppingCart },
+  { href: '/settings', label: 'Ajustes', icon: Settings },
 ];
 
 export default function Sidebar() {
