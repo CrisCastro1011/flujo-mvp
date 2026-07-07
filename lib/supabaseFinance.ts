@@ -23,6 +23,8 @@ export async function getUserTransactions(userId: string): Promise<Transaction[]
       amount: parseFloat(row.amount),
       type: row.type,
       category: row.category,
+      budgetId: row.budget_id || undefined,
+      budgetCategoryId: row.budget_category_id || undefined,
       description: row.description,
       date: row.date
     }));
@@ -146,15 +148,35 @@ export async function saveTransaction(transaction: Omit<Transaction, 'id'>): Pro
       amount: transaction.amount,
       type: transaction.type,
       category: transaction.category,
+      budget_id: transaction.budgetId || null,
+      budget_category_id: transaction.budgetCategoryId || null,
       description: transaction.description,
       date: transaction.date
     };
-    
-    const { data, error } = await supabase
+
+    let data;
+    let error;
+
+    ({ data, error } = await supabase
       .from('transactions')
       .insert([dbTransaction])
       .select()
-      .single();
+      .single());
+
+    if (error && /budget_id|budget_category_id/i.test(error.message || '')) {
+      ({ data, error } = await supabase
+        .from('transactions')
+        .insert([{
+          user_id: transaction.userId,
+          amount: transaction.amount,
+          type: transaction.type,
+          category: transaction.category,
+          description: transaction.description,
+          date: transaction.date
+        }])
+        .select()
+        .single());
+    }
     
     if (error) {
       console.error('Error saving transaction:', error);
@@ -168,6 +190,8 @@ export async function saveTransaction(transaction: Omit<Transaction, 'id'>): Pro
       amount: parseFloat(data.amount),
       type: data.type,
       category: data.category,
+      budgetId: data.budget_id || transaction.budgetId || undefined,
+      budgetCategoryId: data.budget_category_id || transaction.budgetCategoryId || undefined,
       description: data.description,
       date: data.date
     };

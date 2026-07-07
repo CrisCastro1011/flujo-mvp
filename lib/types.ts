@@ -10,6 +10,8 @@ export interface Transaction {
   amount: number;
   type: TransactionType;
   category: string;
+  budgetId?: string;
+  budgetCategoryId?: string;
   description: string;
   date: string;
 }

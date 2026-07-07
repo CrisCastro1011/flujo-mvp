@@ -125,22 +125,31 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     if (transaction.type !== 'expense') return;
 
     let budgetUpdated = false;
+    let updatedBudgetName = '';
     let categoryUpdated = '';
+
+    const normalizedTransactionCategory = transaction.category.trim().toLowerCase();
 
     setBudgets(prev => {
       return prev.map(budget => {
-        if (!budget.isActive) return budget;
+        const matchesExplicitBudget = transaction.budgetId ? budget.id === transaction.budgetId : budget.isActive;
+        if (!matchesExplicitBudget) return budget;
 
         // Buscar categoría que coincida con la categoría de la transacción
         const updatedCategories = budget.categories.map(category => {
+          const matchesExplicitCategory = Boolean(
+            transaction.budgetCategoryId && category.id === transaction.budgetCategoryId
+          );
+
           // Usar el mapeo de categorías para encontrar coincidencias
           const categoryMatches = Object.entries(categoryMapping).some(([budgetCategory, transactionCategories]) => {
             return category.name === budgetCategory && 
                    transactionCategories.includes(transaction.category);
-          }) || category.name.toLowerCase() === transaction.category.toLowerCase();
+          }) || category.name.trim().toLowerCase() === normalizedTransactionCategory;
 
-          if (categoryMatches) {
+          if (matchesExplicitCategory || categoryMatches) {
             budgetUpdated = true;
+            updatedBudgetName = budget.name;
             categoryUpdated = category.name;
             return {
               ...category,
@@ -177,7 +186,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     if (budgetUpdated) {
       const action = isAdd ? 'descontado' : 'reintegrado';
       setBudgetNotification(
-        `💰 $${transaction.amount.toLocaleString()} ${action} ${isAdd ? 'del' : 'al'} presupuesto de ${categoryUpdated}`
+        `💰 $${transaction.amount.toLocaleString()} ${action} ${isAdd ? 'del' : 'al'} presupuesto ${updatedBudgetName ? `"${updatedBudgetName}"` : ''}${categoryUpdated ? ` en ${categoryUpdated}` : ''}`.trim()
       );
       // Limpiar notificación después de 4 segundos
       setTimeout(() => setBudgetNotification(null), 4000);

@@ -8,6 +8,8 @@ CREATE TABLE IF NOT EXISTS public.transactions (
   amount DECIMAL NOT NULL,
   type TEXT NOT NULL CHECK (type IN ('income', 'expense')),
   category TEXT NOT NULL,
+  budget_id UUID REFERENCES public.budgets(id) ON DELETE SET NULL,
+  budget_category_id UUID REFERENCES public.budget_categories(id) ON DELETE SET NULL,
   description TEXT NOT NULL,
   date DATE NOT NULL,
   created_at TIMESTAMP DEFAULT NOW()

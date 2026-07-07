@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { X, DollarSign } from 'lucide-react';
 import { useFinance } from '@/context/FinanceContext';
 import { useCategories } from '@/context/CategoriesContext';
@@ -13,30 +13,80 @@ interface AddTransactionModalProps {
 }
 
 export default function AddTransactionModal({ isOpen, onClose, defaultType = 'expense' }: AddTransactionModalProps) {
-  const { addTransaction } = useFinance();
+  const { addTransaction, budgets } = useFinance();
   const { incomeCategories, expenseCategories } = useCategories();
   const [type, setType] = useState<TransactionType>(defaultType);
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('');
+  const [selectedBudgetId, setSelectedBudgetId] = useState('');
   const [description, setDescription] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
 
-  const categories = type === 'income' ? incomeCategories : expenseCategories;
+  const activeBudgets = useMemo(
+    () => budgets.filter(budget => budget.isActive),
+    [budgets]
+  );
+
+  const selectedBudget = useMemo(
+    () => activeBudgets.find(budget => budget.id === selectedBudgetId) || null,
+    [activeBudgets, selectedBudgetId]
+  );
+
+  const categories = type === 'income'
+    ? incomeCategories
+    : selectedBudget?.categories.length
+      ? selectedBudget.categories.map(category => ({
+          id: category.id,
+          name: category.name,
+          icon: category.icon,
+          color: category.color,
+          type: 'expense' as const,
+          userId: '',
+          isDefault: false,
+        }))
+      : expenseCategories;
+
+  useEffect(() => {
+    if (type !== 'expense') {
+      setSelectedBudgetId('');
+      return;
+    }
+
+    if (activeBudgets.length === 1) {
+      setSelectedBudgetId(activeBudgets[0].id);
+    }
+  }, [type, activeBudgets]);
+
+  useEffect(() => {
+    if (!category) return;
+
+    const categoryStillExists = categories.some(cat => cat.name === category);
+    if (!categoryStillExists) {
+      setCategory('');
+    }
+  }, [categories, category]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!amount || !category || !description || !date) return;
+
+    const selectedBudgetCategory = selectedBudget?.categories.find(
+      budgetCategory => budgetCategory.name === category
+    );
     
     try {
       await addTransaction({
         amount: parseFloat(amount),
         type,
         category,
+        budgetId: type === 'expense' && selectedBudget ? selectedBudget.id : undefined,
+        budgetCategoryId: type === 'expense' && selectedBudgetCategory ? selectedBudgetCategory.id : undefined,
         description,
         date,
       });
       setAmount('');
       setCategory('');
+      setSelectedBudgetId(activeBudgets.length === 1 ? activeBudgets[0].id : '');
       setDescription('');
       setDate(new Date().toISOString().split('T')[0]);
       onClose();
@@ -92,6 +142,27 @@ export default function AddTransactionModal({ isOpen, onClose, defaultType = 'ex
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {type === 'expense' && activeBudgets.length > 0 && (
+            <div>
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">
+                Presupuesto
+              </label>
+              <select
+                value={selectedBudgetId}
+                onChange={(e) => setSelectedBudgetId(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 text-base sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all appearance-none ios-input-fix"
+              >
+                <option value="">No afectar presupuesto</option>
+                {activeBudgets.map((budget) => (
+                  <option key={budget.id} value={budget.id}>{budget.name}</option>
+                ))}
+              </select>
+              <p className="text-xs text-slate-400 mt-1.5">
+                Si eliges un presupuesto, el gasto se descuenta de esa categoría exacta.
+              </p>
+            </div>
+          )}
+
           <div>
             <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">
               Cantidad
@@ -121,7 +192,9 @@ export default function AddTransactionModal({ isOpen, onClose, defaultType = 'ex
               required
               className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 text-base sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all appearance-none ios-input-fix"
             >
-              <option value="">Selecciona una categoría</option>
+              <option value="">
+                {selectedBudget ? 'Selecciona una categoría del presupuesto' : 'Selecciona una categoría'}
+              </option>
               {categories.map((cat) => (
                 <option key={cat.id} value={cat.name}>{cat.name}</option>
               ))}

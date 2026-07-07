@@ -64,6 +64,10 @@ CREATE TABLE public.budget_categories (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
+ALTER TABLE public.transactions
+  ADD COLUMN IF NOT EXISTS budget_id UUID REFERENCES public.budgets(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS budget_category_id UUID REFERENCES public.budget_categories(id) ON DELETE SET NULL;
+
 -- Habilitar RLS
 ALTER TABLE public.budgets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.budget_categories ENABLE ROW LEVEL SECURITY;
