@@ -55,6 +55,67 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [budgetNotification, setBudgetNotification] = useState<string | null>(null);
 
+  const recalculateBudgetsFromTransactions = (
+    budgetsSource: Budget[],
+    transactionsSource: Transaction[]
+  ): Budget[] => {
+    if (budgetsSource.length === 0) return budgetsSource;
+
+    const fallbackActiveBudgetId = budgetsSource.find(budget => budget.isActive)?.id ?? budgetsSource[0]?.id;
+
+    return budgetsSource.map(budget => {
+      const recalculatedCategories = budget.categories.map(category => {
+        const used = transactionsSource
+          .filter(transaction => {
+            if (transaction.type !== 'expense') return false;
+
+            const hasExplicitBudget = Boolean(transaction.budgetId);
+            const matchesBudget = hasExplicitBudget
+              ? transaction.budgetId === budget.id
+              : budget.id === fallbackActiveBudgetId;
+
+            if (!matchesBudget) return false;
+
+            if (transaction.budgetCategoryId) {
+              return transaction.budgetCategoryId === category.id;
+            }
+
+            const normalizedTxCategory = transaction.category.trim().toLowerCase();
+            const directMatch = category.name.trim().toLowerCase() === normalizedTxCategory;
+            const mappedMatch = Object.entries(categoryMapping).some(([budgetCategory, transactionCategories]) => (
+              category.name === budgetCategory && transactionCategories.includes(transaction.category)
+            ));
+
+            return directMatch || mappedMatch;
+          })
+          .reduce((sum, transaction) => sum + transaction.amount, 0);
+
+        return {
+          ...category,
+          used
+        };
+      });
+
+      const totalSpent = recalculatedCategories.reduce((sum, category) => sum + category.used, 0);
+      const remainingBalance = budget.maxIncome - totalSpent;
+
+      let status: 'on-track' | 'warning' | 'exceeded' = 'on-track';
+      if (totalSpent > budget.maxSpendingLimit) {
+        status = 'exceeded';
+      } else if (totalSpent > budget.maxSpendingLimit * 0.8) {
+        status = 'warning';
+      }
+
+      return {
+        ...budget,
+        categories: recalculatedCategories,
+        totalSpent,
+        remainingBalance,
+        status
+      };
+    });
+  };
+
   // Cargar datos cuando el usuario cambia
   useEffect(() => {
     if (!user) {
@@ -99,9 +160,11 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
             getUserSavingsGoals(user.id),
             getUserShoppingLists(user.id)
           ]);
+
+          const reconciledBudgets = recalculateBudgetsFromTransactions(userBudgets, userTransactions);
           
           setTransactions(userTransactions);
-          setBudgets(userBudgets);
+          setBudgets(reconciledBudgets);
           setSavingsGoals(userSavingsGoals);
           setShoppingLists(userShoppingLists);
         } catch (error) {
