@@ -61,20 +61,14 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   ): Budget[] => {
     if (budgetsSource.length === 0) return budgetsSource;
 
-    const fallbackActiveBudgetId = budgetsSource.find(budget => budget.isActive)?.id ?? budgetsSource[0]?.id;
-
     return budgetsSource.map(budget => {
       const recalculatedCategories = budget.categories.map(category => {
         const used = transactionsSource
           .filter(transaction => {
             if (transaction.type !== 'expense') return false;
 
-            const hasExplicitBudget = Boolean(transaction.budgetId);
-            const matchesBudget = hasExplicitBudget
-              ? transaction.budgetId === budget.id
-              : budget.id === fallbackActiveBudgetId;
-
-            if (!matchesBudget) return false;
+            // Solo considerar transacciones vinculadas explícitamente al presupuesto.
+            if (transaction.budgetId !== budget.id) return false;
 
             if (transaction.budgetCategoryId) {
               return transaction.budgetCategoryId === category.id;
@@ -186,6 +180,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   // Función auxiliar para actualizar presupuesto cuando se agrega/elimina una transacción
   const updateBudgetFromTransaction = async (transaction: Transaction, isAdd: boolean = true) => {
     if (transaction.type !== 'expense') return;
+    if (!transaction.budgetId) return;
 
     let budgetUpdated = false;
     let updatedBudgetName = '';
@@ -194,12 +189,8 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
 
     const normalizedTransactionCategory = transaction.category.trim().toLowerCase();
 
-    const fallbackActiveBudgetId = budgets.find(budget => budget.isActive)?.id ?? budgets[0]?.id;
-
     const nextBudgets = budgets.map(budget => {
-      const matchesExplicitBudget = transaction.budgetId
-        ? budget.id === transaction.budgetId
-        : budget.id === fallbackActiveBudgetId;
+      const matchesExplicitBudget = budget.id === transaction.budgetId;
 
       if (!matchesExplicitBudget) return budget;
 
