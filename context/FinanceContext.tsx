@@ -121,12 +121,13 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   // Función auxiliar para actualizar presupuesto cuando se agrega/elimina una transacción
-  const updateBudgetFromTransaction = (transaction: Transaction, isAdd: boolean = true) => {
+  const updateBudgetFromTransaction = async (transaction: Transaction, isAdd: boolean = true) => {
     if (transaction.type !== 'expense') return;
 
     let budgetUpdated = false;
     let updatedBudgetName = '';
     let categoryUpdated = '';
+    let updatedBudgetForPersistence: Budget | null = null;
 
     const normalizedTransactionCategory = transaction.category.trim().toLowerCase();
 
@@ -176,7 +177,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
           newStatus = 'warning';
         }
 
-        return {
+        const nextBudget: Budget = {
           ...budget,
           categories: updatedCategories,
           totalSpent,
@@ -184,8 +185,20 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
           status: newStatus,
           updatedAt: new Date().toISOString()
         };
+
+        updatedBudgetForPersistence = nextBudget;
+        return nextBudget;
       });
     });
+
+    if (budgetUpdated && hasValidConfig && updatedBudgetForPersistence) {
+      const { id, userId, ...budgetPayload } = updatedBudgetForPersistence;
+      const persistedBudget = await updateBudgetInDB(id, budgetPayload);
+
+      if (persistedBudget) {
+        setBudgets(prev => prev.map(item => item.id === id ? persistedBudget : item));
+      }
+    }
 
     // Mostrar notificación si se actualizó el presupuesto
     if (budgetUpdated) {
@@ -212,7 +225,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       if (savedTransaction) {
         setTransactions(prev => [savedTransaction, ...prev]);
         // Actualizar presupuesto si es un gasto
-        updateBudgetFromTransaction(savedTransaction, true);
+        await updateBudgetFromTransaction(savedTransaction, true);
       }
     } else {
       // Modo demo: solo actualizar estado local
@@ -222,7 +235,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       };
       setTransactions(prev => [newTransaction, ...prev]);
       // Actualizar presupuesto si es un gasto
-      updateBudgetFromTransaction(newTransaction, true);
+      await updateBudgetFromTransaction(newTransaction, true);
     }
   };
 
@@ -236,14 +249,14 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         setTransactions(prev => prev.filter(t => t.id !== id));
         // Restar del presupuesto si era un gasto
         if (transactionToDelete) {
-          updateBudgetFromTransaction(transactionToDelete, false);
+          await updateBudgetFromTransaction(transactionToDelete, false);
         }
       }
     } else {
       setTransactions(prev => prev.filter(t => t.id !== id));
       // Restar del presupuesto si era un gasto
       if (transactionToDelete) {
-        updateBudgetFromTransaction(transactionToDelete, false);
+        await updateBudgetFromTransaction(transactionToDelete, false);
       }
     }
   };
