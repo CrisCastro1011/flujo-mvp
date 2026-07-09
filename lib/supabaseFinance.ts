@@ -41,7 +41,8 @@ export async function getUserBudgets(userId: string): Promise<Budget[]> {
     const { data, error } = await supabase
       .from('budgets')
       .select('*')
-      .eq('user_id', userId);
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
     
     if (error) {
       console.error('Error fetching budgets:', error);
@@ -99,7 +100,8 @@ export async function getUserBudgets(userId: string): Promise<Budget[]> {
       icon: row.icon,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
-      isActive: row.is_active
+      // Compatibilidad con registros antiguos donde is_active puede venir NULL.
+      isActive: row.is_active ?? true
     }));
   } catch (error) {
     console.error('Error fetching budgets:', error);
@@ -220,7 +222,7 @@ export async function saveBudget(budget: Omit<Budget, 'id'>): Promise<Budget | n
       days_until_next: budget.daysUntilNext,
       color: budget.color,
       icon: budget.icon,
-      is_active: budget.isActive,
+      is_active: budget.isActive ?? true,
       created_at: budget.createdAt,
       updated_at: budget.updatedAt
     };
@@ -275,7 +277,7 @@ export async function saveBudget(budget: Omit<Budget, 'id'>): Promise<Budget | n
       icon: data.icon,
       createdAt: data.created_at,
       updatedAt: data.updated_at,
-      isActive: data.is_active
+      isActive: data.is_active ?? true
     };
   } catch (error) {
     console.error('Error saving budget:', error);
@@ -300,7 +302,7 @@ export async function updateBudgetInDB(id: string, budget: Omit<Budget, 'id' | '
       days_until_next: budget.daysUntilNext,
       color: budget.color,
       icon: budget.icon,
-      is_active: budget.isActive,
+      is_active: budget.isActive ?? true,
       updated_at: budget.updatedAt
     };
 
@@ -369,7 +371,7 @@ export async function updateBudgetInDB(id: string, budget: Omit<Budget, 'id' | '
       icon: data.icon,
       createdAt: data.created_at,
       updatedAt: data.updated_at,
-      isActive: data.is_active
+      isActive: data.is_active ?? true
     };
   } catch (error) {
     console.error('Error updating budget:', error);

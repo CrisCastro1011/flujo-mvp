@@ -8,8 +8,8 @@ CREATE TABLE IF NOT EXISTS public.transactions (
   amount DECIMAL NOT NULL,
   type TEXT NOT NULL CHECK (type IN ('income', 'expense')),
   category TEXT NOT NULL,
-  budget_id UUID REFERENCES public.budgets(id) ON DELETE SET NULL,
-  budget_category_id UUID REFERENCES public.budget_categories(id) ON DELETE SET NULL,
+  budget_id UUID,
+  budget_category_id UUID,
   description TEXT NOT NULL,
   date DATE NOT NULL,
   created_at TIMESTAMP DEFAULT NOW()
@@ -95,6 +95,33 @@ CREATE TABLE IF NOT EXISTS public.shopping_list_items (
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW()
 );
+
+-- Asegurar relación de transacciones con presupuestos después de crear las tablas dependientes
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'transactions_budget_id_fkey'
+  ) THEN
+    ALTER TABLE public.transactions
+      ADD CONSTRAINT transactions_budget_id_fkey
+      FOREIGN KEY (budget_id) REFERENCES public.budgets(id) ON DELETE SET NULL;
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'transactions_budget_category_id_fkey'
+  ) THEN
+    ALTER TABLE public.transactions
+      ADD CONSTRAINT transactions_budget_category_id_fkey
+      FOREIGN KEY (budget_category_id) REFERENCES public.budget_categories(id) ON DELETE SET NULL;
+  END IF;
+END $$;
 
 -- 2. ACTIVAR ROW LEVEL SECURITY (RLS) - Solo si no está activado
 DO $$

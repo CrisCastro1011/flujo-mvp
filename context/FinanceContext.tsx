@@ -131,8 +131,13 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     const normalizedTransactionCategory = transaction.category.trim().toLowerCase();
 
     setBudgets(prev => {
+      const fallbackActiveBudgetId = prev.find(budget => budget.isActive)?.id ?? prev[0]?.id;
+
       return prev.map(budget => {
-        const matchesExplicitBudget = transaction.budgetId ? budget.id === transaction.budgetId : budget.isActive;
+        const matchesExplicitBudget = transaction.budgetId
+          ? budget.id === transaction.budgetId
+          : budget.id === fallbackActiveBudgetId;
+
         if (!matchesExplicitBudget) return budget;
 
         // Buscar categoría que coincida con la categoría de la transacción

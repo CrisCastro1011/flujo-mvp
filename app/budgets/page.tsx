@@ -12,9 +12,9 @@ export default function BudgetsPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
 
-  // Filtrar solo presupuestos activos
+  // Fallback: si no hay activo explícito, usar el primero disponible.
   const activeBudgets = budgets.filter((b: Budget) => b.isActive);
-  const currentBudget = activeBudgets.length > 0 ? activeBudgets[0] : null;
+  const currentBudget = activeBudgets.length > 0 ? activeBudgets[0] : budgets[0] || null;
 
   // Calcular estadísticas del presupuesto actual
   const getTotalSpent = (budget: Budget) => {
