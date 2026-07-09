@@ -131,65 +131,68 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
 
     const normalizedTransactionCategory = transaction.category.trim().toLowerCase();
 
-    setBudgets(prev => {
-      const fallbackActiveBudgetId = prev.find(budget => budget.isActive)?.id ?? prev[0]?.id;
+    const fallbackActiveBudgetId = budgets.find(budget => budget.isActive)?.id ?? budgets[0]?.id;
 
-      return prev.map(budget => {
-        const matchesExplicitBudget = transaction.budgetId
-          ? budget.id === transaction.budgetId
-          : budget.id === fallbackActiveBudgetId;
+    const nextBudgets = budgets.map(budget => {
+      const matchesExplicitBudget = transaction.budgetId
+        ? budget.id === transaction.budgetId
+        : budget.id === fallbackActiveBudgetId;
 
-        if (!matchesExplicitBudget) return budget;
+      if (!matchesExplicitBudget) return budget;
 
-        // Buscar categoría que coincida con la categoría de la transacción
-        const updatedCategories = budget.categories.map(category => {
-          const matchesExplicitCategory = Boolean(
-            transaction.budgetCategoryId && category.id === transaction.budgetCategoryId
-          );
+      // Buscar categoría que coincida con la categoría de la transacción
+      const updatedCategories = budget.categories.map(category => {
+        const matchesExplicitCategory = Boolean(
+          transaction.budgetCategoryId && category.id === transaction.budgetCategoryId
+        );
 
-          // Usar el mapeo de categorías para encontrar coincidencias
-          const categoryMatches = Object.entries(categoryMapping).some(([budgetCategory, transactionCategories]) => {
-            return category.name === budgetCategory && 
-                   transactionCategories.includes(transaction.category);
-          }) || category.name.trim().toLowerCase() === normalizedTransactionCategory;
+        // Usar el mapeo de categorías para encontrar coincidencias
+        const categoryMatches = Object.entries(categoryMapping).some(([budgetCategory, transactionCategories]) => {
+          return category.name === budgetCategory &&
+                 transactionCategories.includes(transaction.category);
+        }) || category.name.trim().toLowerCase() === normalizedTransactionCategory;
 
-          if (matchesExplicitCategory || categoryMatches) {
-            budgetUpdated = true;
-            updatedBudgetName = budget.name;
-            categoryUpdated = category.name;
-            return {
-              ...category,
-              used: Math.max(0, category.used + (isAdd ? transaction.amount : -transaction.amount))
-            };
-          }
-          return category;
-        });
-
-        // Recalcular totales del presupuesto
-        const totalSpent = updatedCategories.reduce((sum, cat) => sum + cat.used, 0);
-        const remainingBalance = budget.maxIncome - totalSpent;
-        
-        // Determinar nuevo estado
-        let newStatus: 'on-track' | 'warning' | 'exceeded' = 'on-track';
-        if (totalSpent > budget.maxSpendingLimit) {
-          newStatus = 'exceeded';
-        } else if (totalSpent > budget.maxSpendingLimit * 0.8) {
-          newStatus = 'warning';
+        if (matchesExplicitCategory || categoryMatches) {
+          budgetUpdated = true;
+          updatedBudgetName = budget.name;
+          categoryUpdated = category.name;
+          return {
+            ...category,
+            used: Math.max(0, category.used + (isAdd ? transaction.amount : -transaction.amount))
+          };
         }
 
-        const nextBudget: Budget = {
-          ...budget,
-          categories: updatedCategories,
-          totalSpent,
-          remainingBalance,
-          status: newStatus,
-          updatedAt: new Date().toISOString()
-        };
-
-        updatedBudgetForPersistence = nextBudget;
-        return nextBudget;
+        return category;
       });
+
+      // Recalcular totales del presupuesto
+      const totalSpent = updatedCategories.reduce((sum, cat) => sum + cat.used, 0);
+      const remainingBalance = budget.maxIncome - totalSpent;
+
+      // Determinar nuevo estado
+      let newStatus: 'on-track' | 'warning' | 'exceeded' = 'on-track';
+      if (totalSpent > budget.maxSpendingLimit) {
+        newStatus = 'exceeded';
+      } else if (totalSpent > budget.maxSpendingLimit * 0.8) {
+        newStatus = 'warning';
+      }
+
+      const nextBudget: Budget = {
+        ...budget,
+        categories: updatedCategories,
+        totalSpent,
+        remainingBalance,
+        status: newStatus,
+        updatedAt: new Date().toISOString()
+      };
+
+      updatedBudgetForPersistence = nextBudget;
+      return nextBudget;
     });
+
+    if (budgetUpdated) {
+      setBudgets(nextBudgets);
+    }
 
     if (budgetUpdated && hasValidConfig && updatedBudgetForPersistence) {
       const { id, userId, ...budgetPayload } = updatedBudgetForPersistence;
